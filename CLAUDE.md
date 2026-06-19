@@ -46,7 +46,8 @@ Compose + Hilt. Двусторонняя нативная связь с бото
   `google/gemini-3.1-flash-lite`, ключ `GEMINI_API_KEY` в `/root/.openclaw/.env`. Chat
   остаётся на opencode-go. (opencode-go vision не работает — Cloudflare 1010.)
 - Обновления APK: **GitHub Releases** (не VPS). Skill `phone-control`:
-  `/opt/obsidian-vault/cortex/skills/phone-control/SKILL.md`.
+  `/root/.openclaw/workspace/skills/phone-control/SKILL.md` (workspace = plaintext-мозг;
+  E2EE-копия в вольте `/opt/obsidian-vault/cortex/skills/...`, two-way синк).
 
 ---
 
