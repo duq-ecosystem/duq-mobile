@@ -62,6 +62,14 @@ android {
             abiFilters += "arm64-v8a"
         }
 
+        // On-device STT: собираем libduqwhisper.so (JNI-мост + статика whisper.cpp).
+        externalNativeBuild {
+            cmake {
+                cppFlags += "-std=c++17"
+                arguments += "-DANDROID_STL=c++_static"
+            }
+        }
+
         // API Configuration (can be overridden per flavor/buildType)
         buildConfigField("String", "API_BASE_URL", "\"https://on-za-menya.online\"")
 
@@ -103,6 +111,13 @@ android {
         buildConfig = true
     }
 
+    // Путь к CMake-скрипту JNI-моста whisper.cpp (libduqwhisper.so).
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
 
     packaging {
         resources {

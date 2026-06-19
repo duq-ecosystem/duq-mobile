@@ -56,6 +56,19 @@ object AppConfig {
     const val AUDIO_TEMP_FILENAME = "voice_command.wav"
     const val RESPONSE_AUDIO_FILENAME = "response_audio.ogg"
 
+    // ── On-device STT (whisper.cpp) ──
+    // Переносим STT с сервера (faster-whisper :8765, 2-CPU VPS) на устройство:
+    // разгружает VPS, убирает сетевую латентность upload→inference→download, голос
+    // не покидает телефон. При STT_ON_DEVICE=false — fallback на серверный STT_URL.
+    const val STT_ON_DEVICE = true
+    const val STT_LANGUAGE = "ru"                       // зеркалит серверный language=ru
+    // ggml small q5_1 (multilingual, ~190MB) — паритет с серверным faster-whisper small.
+    // Качается в filesDir при первом запуске (НЕ в APK). URL проверен с VPS (206 OK;
+    // ggml-org-зеркало даёт 401 — берём ggerganov).
+    const val WHISPER_MODEL_FILE = "ggml-small-q5_1.bin"
+    const val WHISPER_MODEL_URL =
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin"
+
     // Wake word (0.0-1.0, higher = more sensitive, may cause false positives)
     const val WAKE_WORD_SENSITIVITY = 0.9f
     const val WAKE_WORD_FILENAME = "hey_duck.ppn"
