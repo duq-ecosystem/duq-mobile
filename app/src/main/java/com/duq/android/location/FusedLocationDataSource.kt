@@ -39,10 +39,6 @@ class FusedLocationDataSource(private val context: Context) : LocationDataSource
                 PackageManager.PERMISSION_GRANTED
 
     override suspend fun getLastLocation(): Location? {
-        // ⛔⛔⛔ ВРЕМЕННАЯ ЗАГЛУШКА — тест интеграции location→context (adb-мок GMS не
-        // перебивает на железе, поэтому фейк прямо в коде). Фикс. Владивосток. УДАЛИТЬ после проверки!
-        return Location("mock-test").apply { latitude = 43.1155; longitude = 131.8855 }
-        @Suppress("UNREACHABLE_CODE")
         if (!hasPermission()) return null
         return suspendCancellableCoroutine { cont ->
             try {
