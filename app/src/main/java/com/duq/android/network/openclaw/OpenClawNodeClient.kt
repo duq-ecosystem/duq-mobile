@@ -51,6 +51,7 @@ class OpenClawNodeClient @Inject constructor(
     private val locationDataSource: LocationDataSource,
     private val notificationManager: DuqNotificationManager,
     private val audioRecorder: com.duq.android.audio.AudioRecorderInterface,
+    private val whisper: com.duq.android.audio.WhisperLocal,
     private val logger: Logger
 ) {
     private val cameraCapture by lazy { CameraCapture(context) }
@@ -360,8 +361,25 @@ class OpenClawNodeClient @Inject constructor(
         else -> throw Exception("unsupported command: $command")
     }
 
-    /** Uploads a WAV to the STT endpoint and returns the transcript text. */
-    private suspend fun transcribe(file: File): String = withContext(Dispatchers.IO) {
+    /** Transcribes a WAV: on-device whisper.cpp when enabled, else server /stt fallback. */
+    private suspend fun transcribe(file: File): String {
+        if (AppConfig.STT_ON_DEVICE) {
+            try {
+                if (!whisper.isModelReady()) whisper.ensureModel()
+                if (whisper.isModelReady()) {
+                    val text = whisper.transcribeWav(file)
+                    if (text.isNotBlank()) return text
+                    logger.w(TAG, "on-device STT empty, falling back to server")
+                }
+            } catch (e: Exception) {
+                logger.w(TAG, "on-device STT failed (${e.message}), falling back to server")
+            }
+        }
+        return transcribeOnServer(file)
+    }
+
+    /** Uploads a WAV to the server STT endpoint and returns the transcript text. */
+    private suspend fun transcribeOnServer(file: File): String = withContext(Dispatchers.IO) {
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("model", "whisper-1")
             .addFormDataPart("language", "ru")

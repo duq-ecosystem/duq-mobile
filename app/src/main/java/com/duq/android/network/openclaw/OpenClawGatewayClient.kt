@@ -29,6 +29,7 @@ import javax.inject.Singleton
 class OpenClawGatewayClient @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val deviceIdentity: DeviceIdentityManager,
+    private val whisper: com.duq.android.audio.WhisperLocal,
     private val logger: Logger
 ) {
     companion object {
@@ -646,6 +647,19 @@ class OpenClawGatewayClient @Inject constructor(
     }
 
     suspend fun transcribeAudio(file: File): String {
+        // On-device whisper.cpp when enabled; on any failure fall back to server /stt.
+        if (AppConfig.STT_ON_DEVICE) {
+            try {
+                if (!whisper.isModelReady()) whisper.ensureModel()
+                if (whisper.isModelReady()) {
+                    val text = whisper.transcribeWav(file)
+                    if (text.isNotBlank()) return text
+                    logger.w(TAG, "on-device STT empty, falling back to server")
+                }
+            } catch (e: Exception) {
+                logger.w(TAG, "on-device STT failed (${e.message}), falling back to server")
+            }
+        }
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("model", "whisper-1")
             .addFormDataPart("language", "ru")
