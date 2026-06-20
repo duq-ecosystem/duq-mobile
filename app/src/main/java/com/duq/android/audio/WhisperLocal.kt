@@ -9,15 +9,13 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * On-device STT через whisper.cpp (JNI). Заменяет серверный /stt:
  *  - модель ggml-small (multilingual) докачивается в filesDir при первом запуске;
- *  - [transcribeWav] парсит 16 kHz mono PCM16 WAV → float32 → нативный whisper_full (language=ru).
+ *  - WAV декодирует [WavDecoder] → float32 → нативный whisper_full (language=ru).
  *
  * Контекст модели грузится один раз и переиспользуется (init дорогой).
  * Потокобезопасность: transcribe вызывается из одного voice-флоу за раз; на всякий — synchronized.
@@ -127,7 +125,7 @@ class WhisperLocal @Inject constructor(
 
     /** Транскрибирует 16 kHz mono PCM16 WAV-файл в текст. Бросает при пустом результате. */
     private suspend fun transcribeWav(file: File): String = withContext(Dispatchers.Default) {
-        val pcm = readWavToFloat(file)
+        val pcm = WavDecoder.decodePcm16Mono(file)
         if (pcm.isEmpty()) throw IllegalStateException("empty audio")
         val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
         val text = synchronized(lock) { nativeTranscribe(ensureCtx(), pcm, AppConfig.STT_LANGUAGE, threads) }
@@ -137,16 +135,5 @@ class WhisperLocal @Inject constructor(
     /** Выгружает модель из нативной памяти (~0.5 ГБ). Зовётся системой при нехватке RAM. */
     fun release() {
         synchronized(lock) { if (ctxPtr != 0L) { nativeFree(ctxPtr); ctxPtr = 0L } }
-    }
-
-    /** WAV 16 kHz mono PCM16 → float32 [-1,1]. Пропускаем 44-байтный заголовок. */
-    private fun readWavToFloat(file: File): FloatArray {
-        val bytes = file.readBytes()
-        if (bytes.size <= 44) return FloatArray(0)
-        val pcm = ByteBuffer.wrap(bytes, 44, bytes.size - 44).order(ByteOrder.LITTLE_ENDIAN)
-        val out = FloatArray((bytes.size - 44) / 2)
-        var i = 0
-        while (pcm.remaining() >= 2) { out[i++] = pcm.short / 32768.0f }
-        return out
     }
 }
