@@ -126,7 +126,7 @@ class WhisperLocal @Inject constructor(
     }
 
     /** Транскрибирует 16 kHz mono PCM16 WAV-файл в текст. Бросает при пустом результате. */
-    suspend fun transcribeWav(file: File): String = withContext(Dispatchers.Default) {
+    private suspend fun transcribeWav(file: File): String = withContext(Dispatchers.Default) {
         val pcm = readWavToFloat(file)
         if (pcm.isEmpty()) throw IllegalStateException("empty audio")
         val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)

@@ -842,18 +842,3 @@ private fun formatInboxTime(ms: Long): String =
     java.text.SimpleDateFormat("dd.MM HH:mm", java.util.Locale.getDefault())
         .format(java.util.Date(ms))
 
-@Composable
-private fun getStatusText(state: DuqState, error: DuqError?): String {
-    // Show error message if in error state and error exists
-    if (state == DuqState.ERROR && error != null) {
-        return error.toDisplayMessage().uppercase()
-    }
-    return when (state) {
-        DuqState.IDLE -> stringResource(R.string.status_idle)
-        DuqState.LISTENING, DuqState.RECORDING -> stringResource(R.string.status_listening)
-        DuqState.PROCESSING -> stringResource(R.string.status_processing)
-        DuqState.PLAYING -> stringResource(R.string.status_playing)
-        DuqState.ERROR -> stringResource(R.string.status_error)
-    }
-}
-
