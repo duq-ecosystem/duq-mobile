@@ -258,7 +258,21 @@ class OpenClawNodeClient @Inject constructor(
                 } else {
                     val details = (raw["error"] as? Map<*, *>)?.get("details") as? Map<*, *>
                     val code = details?.get("code") as? String
+                    val authReason = details?.get("authReason") as? String
                     logger.e(TAG, "✗ node res FAILED code=$code reason=${details?.get("reason")}")
+                    // If the NODE TOKEN itself was rejected (revoked server-side, or the
+                    // Ed25519 key rotated so the token no longer matches), drop it. The
+                    // reconnect then falls back to the long-lived operator token (auth
+                    // chain in connect()), which re-opens node pairing by signed device.id
+                    // instead of looping forever on a dead node token. One-shot: once
+                    // cleared, getNodeToken() is blank so this branch can't re-fire.
+                    val tokenRejected = (authReason?.contains("invalid") == true ||
+                        code == "AUTH_DEVICE_TOKEN_INVALID" || code == "TOKEN_MISMATCH")
+                    if (tokenRejected && settings.getNodeToken().isNotBlank() &&
+                        currentAuth["deviceToken"] == settings.getNodeToken()) {
+                        logger.w(TAG, "node token rejected — clearing, will retry via operator-token")
+                        settings.saveNodeToken("")
+                    }
                     if (code == "PAIRING_REQUIRED") {
                         _state.value = GatewayConnectionState.PAIRING
                         logger.w(TAG, "Node pairing required — approve with: openclaw nodes approve <reqId> (will retry)")
