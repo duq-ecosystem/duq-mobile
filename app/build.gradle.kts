@@ -80,6 +80,13 @@ android {
         val porcupineKey = System.getenv("PORCUPINE_API_KEY")
             ?: localProperties.getProperty("PORCUPINE_API_KEY", "")
         buildConfigField("String", "PORCUPINE_API_KEY", "\"$porcupineKey\"")
+
+        // Read-only GitHub token (contents:read on this private repo) for self-update.
+        // CI passes GH_RELEASE_TOKEN secret; local builds read local.properties. Empty
+        // → AppUpdater disables itself (no crash). Baked into BuildConfig, not committed.
+        val ghReleaseToken = System.getenv("GH_RELEASE_TOKEN")
+            ?: localProperties.getProperty("GH_RELEASE_TOKEN", "")
+        buildConfigField("String", "GH_RELEASE_TOKEN", "\"$ghReleaseToken\"")
     }
 
     buildTypes {

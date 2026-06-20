@@ -22,13 +22,16 @@ object AppConfig {
     // FileLogger timestamps were +5h off from Danny's wall clock — pin it explicitly.
     const val LOG_TIMEZONE = "Asia/Almaty"
 
-    // Self-update — served straight from GitHub Releases (public repo). No VPS
-    // channel in the path: GitHub's CDN is the source of truth, so a flaky SSH
-    // publish can't break updates. Both are stable "latest non-prerelease" URLs
-    // that redirect to the current release asset.
-    const val UPDATE_REPO = "duq-ecosystem/duq-android"
-    const val UPDATE_VERSION_URL = "https://github.com/$UPDATE_REPO/releases/latest/download/version.json"
-    const val UPDATE_APK_URL = "https://github.com/$UPDATE_REPO/releases/latest/download/app-release.apk"
+    // Self-update — straight from GitHub Releases of the PRIVATE monorepo. CI builds
+    // and publishes the signed APK as a release asset; the app reads the latest release
+    // via the GitHub API with a read-only token (private repo assets require auth).
+    // versionCode is derived from the release tag (build-<code>); the APK is the
+    // "app-release.apk" asset, downloaded by its asset id with Accept: octet-stream.
+    const val UPDATE_REPO = "duq-ecosystem/duq-next-generation"
+    const val UPDATE_LATEST_RELEASE_URL = "https://api.github.com/repos/$UPDATE_REPO/releases/latest"
+    // Read-only fine-grained token (contents:read on this repo only), injected at build
+    // time from CI secret / local.properties — NOT committed. Empty → updater disabled.
+    val UPDATE_GITHUB_TOKEN: String get() = com.duq.android.BuildConfig.GH_RELEASE_TOKEN
 
     // Network timeouts (seconds)
     const val CONNECT_TIMEOUT_S = 30L

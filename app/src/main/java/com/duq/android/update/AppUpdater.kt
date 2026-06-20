@@ -33,8 +33,8 @@ class AppUpdater(private val context: Context, private val notificationsEnabled:
 
     companion object {
         private const val TAG = "AppUpdater"
-        private val VERSION_URL = AppConfig.UPDATE_VERSION_URL
-        private val APK_URL = AppConfig.UPDATE_APK_URL
+        private val LATEST_RELEASE_URL = AppConfig.UPDATE_LATEST_RELEASE_URL
+        private const val APK_ASSET_NAME = "app-release.apk"
         private const val APK_FILENAME = "duq-update.apk"
         const val CHANNEL_ID = "duq_update_channel"
         private const val NOTIFY_ID = 9001
@@ -117,32 +117,53 @@ class AppUpdater(private val context: Context, private val notificationsEnabled:
         }
     }
 
-    private fun fetchRemoteVersionCode(): Int? {
-        // Cache-bust: GitHub's CDN serves releases/latest/download/* from edge
-        // caches, so a fresh release can return a STALE version.json for a while.
-        // no-cache + a unique query param force a fresh fetch.
+    /** Fetches the latest GitHub release JSON (private repo → needs the read-only token). */
+    private fun fetchLatestReleaseJson(): JSONObject? {
+        val token = AppConfig.UPDATE_GITHUB_TOKEN
+        if (token.isBlank()) { flog.w(TAG, "GH_RELEASE_TOKEN empty — self-update disabled"); return null }
         val request = Request.Builder()
-            .url("$VERSION_URL?t=${System.currentTimeMillis()}")
+            .url(LATEST_RELEASE_URL)
+            .header("Authorization", "Bearer $token")
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
             .header("Cache-Control", "no-cache")
-            .header("Pragma", "no-cache")
             .build()
-        val body = client.newCall(request).execute().use { resp ->
-            if (!resp.isSuccessful) return null
-            resp.body?.string() ?: return null
+        return client.newCall(request).execute().use { resp ->
+            if (!resp.isSuccessful) { flog.w(TAG, "releases/latest HTTP ${resp.code}"); return null }
+            resp.body?.string()?.let { JSONObject(it) }
         }
-        return JSONObject(body).optInt("versionCode", -1).takeIf { it > 0 }
+    }
+
+    private fun fetchRemoteVersionCode(): Int? {
+        val rel = fetchLatestReleaseJson() ?: return null
+        // CI tags each release "build-<versionCode>" (matches the APK's versionCode).
+        val tag = rel.optString("tag_name", "")
+        return Regex("build-(\\d+)").find(tag)?.groupValues?.getOrNull(1)?.toIntOrNull()?.takeIf { it > 0 }
     }
 
     private fun downloadApk(onProgress: (Float) -> Unit = {}): File? {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
         val apkFile = File(dir, APK_FILENAME)
         val tmp = File(dir, "$APK_FILENAME.tmp")
-        // Download to .tmp then atomically rename, so an interrupted download never
-        // leaves a partial file that fails install with INSTALL_PARSE_FAILED_NOT_APK.
-        // Cache-bust so the CDN doesn't hand back a stale APK for latest/download.
+        // Resolve the APK release asset and download it via the GitHub API by asset id
+        // with Accept: octet-stream (private-repo assets require auth + this Accept;
+        // browser_download_url 404s without a session). Atomic .tmp → rename so an
+        // interrupted download never leaves a partial that fails install.
+        val token = AppConfig.UPDATE_GITHUB_TOKEN
+        if (token.isBlank()) { flog.w(TAG, "GH_RELEASE_TOKEN empty — cannot download"); return null }
+        val rel = fetchLatestReleaseJson() ?: return null
+        val assets = rel.optJSONArray("assets") ?: return null
+        var assetUrl: String? = null
+        for (i in 0 until assets.length()) {
+            val a = assets.optJSONObject(i) ?: continue
+            if (a.optString("name") == APK_ASSET_NAME) { assetUrl = a.optString("url"); break }
+        }
+        if (assetUrl.isNullOrBlank()) { flog.w(TAG, "$APK_ASSET_NAME asset not found in release"); return null }
         val request = Request.Builder()
-            .url("$APK_URL?t=${System.currentTimeMillis()}")
-            .header("Cache-Control", "no-cache")
+            .url(assetUrl)
+            .header("Authorization", "Bearer $token")
+            .header("Accept", "application/octet-stream")
+            .header("X-GitHub-Api-Version", "2022-11-28")
             .build()
         client.newCall(request).execute().use { resp ->
             if (!resp.isSuccessful) { tmp.delete(); return null }
