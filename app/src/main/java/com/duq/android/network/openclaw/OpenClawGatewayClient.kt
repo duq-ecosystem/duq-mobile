@@ -634,9 +634,16 @@ class OpenClawGatewayClient @Inject constructor(
         val out = rows.mapNotNull { row ->
             val m = row as? Map<*, *> ?: return@mapNotNull null
             val role = m["role"] as? String ?: return@mapNotNull null
+            // ONLY chat turns belong in the transcript. The gateway returns the raw
+            // session rows, which include `toolResult`/`tool` entries (e.g. heartbeat's
+            // exec output: gog gmail tables, "unexpected argument list", "No events").
+            // extractMessageText pulls their {type:text} content, so without this guard
+            // they render as phantom "Duq" chat bubbles. Drop everything but user/assistant.
+            if (role != "user" && role != "assistant") return@mapNotNull null
             // Rows mirror the chat-frame `message` shape: text is in `content`
             // (a String or a list of {type:"text",text}) — directly on the row or
             // nested under `message`. Reuse the same extractor; fall back to plain text.
+            // (assistant rows carrying only toolCall blocks yield null here → skipped.)
             val text = extractMessageText(m["message"] ?: m)
                 ?: (m["text"] as? String)
                 ?: return@mapNotNull null
