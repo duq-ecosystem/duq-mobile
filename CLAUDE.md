@@ -166,11 +166,18 @@ targetSDK34). Фикс: типы `location`/`camera` добавляются в F
 **STT — ON-DEVICE (whisper.cpp), 2026-06-20, e2e-проверено.** Распознавание перенесено
 с сервера (faster-whisper :8765, 2-CPU VPS) на телефон: whisper.cpp (submodule v1.9.1) +
 JNI-мост `libduqwhisper.so` (`app/src/main/cpp/`, CMake/NDK arm64), модель `ggml-small-q5_1`
-(multilingual ru, ~190MB) докачивается в filesDir при первом голосе. `WhisperLocal` парсит
-16kHz mono PCM16 WAV → float32 → `whisper_full(language=ru)`. За флагом `AppConfig.STT_ON_DEVICE`
-(true); **fallback на серверный `/stt` при любой ошибке**. Замена в `transcribe()` обоих клиентов
-(`OpenClawNodeClient` + `OpenClawGatewayClient`). Проверено: голос распознан на телефоне,
-серверный :8765 — 0 запросов. Разгружает VPS, латентность ниже, голос не покидает устройство.
+(multilingual ru, ~190MB) докачивается в filesDir при первом голосе. WAV декодирует
+`WavDecoder.decodePcm16Mono` (16kHz mono PCM16 → float32), затем `whisper_full(language=ru)`.
+За флагом `AppConfig.STT_ON_DEVICE` (true); **fallback на серверный `/stt` при любой ошибке**.
+Проверено: голос распознан на телефоне, серверный :8765 — 0 запросов. Разгружает VPS,
+латентность ниже, голос не покидает устройство.
+
+**Архитектура (SOLID, после ревью 2026-06-20):** единая точка `WhisperLocal.tryTranscribe(file): String?`
+— инкапсулирует флаг + докачку + распознавание + fallback; `null` → вызывающий уходит на сервер.
+Оба клиента (`OpenClawNodeClient`, `OpenClawGatewayClient`) зовут её в одну строку
+(`whisper.tryTranscribe(file) ?: transcribeOnServer(file)`) — без дублирования логики.
+`WhisperLocal` (Hilt `@Singleton`) держит модель в RAM (init дорогой), выгружает её по
+`onTrimMemory(COMPLETE)`/`onLowMemory`. Парсинг WAV вынесен в `WavDecoder` (SRP).
 
 **Push-to-talk (hold-to-talk), VERIFIED на устройстве:** зажать **утку** (`DuqDuck`)
 на главном экране → запись без VAD-обрезки (`AudioRecorder.record(file, useVad=false)`,
