@@ -40,6 +40,13 @@ Compose + Hilt. Двусторонняя нативная связь с бото
 - **Живой IP:** `187.124.131.127` (Литва). Старый `88.222.245.74` (Индия) и `90.156.230.49` — **МЁРТВЫ**.
 - Backend (gateway): `https://on-za-menya.online` (nginx → openclaw `:18789`).
 - Эндпоинты: `/openclaw` (WS), `/stt/v1/...` (faster-whisper :8765), `/tts` (Silero :8766, bind 0.0.0.0).
+- 🔒 **Закрытый периметр (2026-06-21): ВСЕ серверные запросы app шлют `X-Auth-Token` (edge-токен).**
+  nginx гейтит каждый эндпоинт — без токена `401` → fail2ban банит IP. Прямые порты закрыты ufw
+  (наружу только 80/443/22/wg). Токен = `BuildConfig.SERVER_TOKEN` (CI-секрет `SERVER_TOKEN`,
+  = vault-sync token), добавляется единым хелпером `network/ServerAuth.kt` `withServerAuth()` на
+  TTS/STT/core-update/gateway-WS (operator+node). Пусто в сборке → заголовок не шлётся (отладка).
+  ⚠️ Новый билд app ОБЯЗАН нести токен, иначе после гейта отвалится от gateway (раскатывать app
+  ДО включения гейта). Деталь периметра — корневой `CLAUDE.md` § «Закрытый периметр».
 - Движок: npm-global `openclaw` (`/usr/lib/node_modules/openclaw`), systemd `duq-openclaw`.
   Конфиг: `/root/.openclaw/openclaw.json`. Применить: `systemctl restart duq-openclaw`.
 - **Vision:** провайдер `google` (native `api: google-generative-ai`!), `imageModel`
