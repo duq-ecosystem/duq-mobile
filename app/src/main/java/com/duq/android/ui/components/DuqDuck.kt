@@ -123,12 +123,37 @@ fun DuqDuck(
         label = "pulse"
     )
 
+    // ── Орбитальные частицы вокруг утки — «живость», не плоское свечение ──
+    // Бегут по кругу при активности; направление/скорость зависят от фазы:
+    // RECORDING — частые быстрые точки (ловлю звук), PROCESSING — вращение по орбите
+    // (распознаю/думаю), PLAYING — мягкий выдох. В IDLE орбита скрыта.
+    val orbitActive = state == DuqState.RECORDING || state == DuqState.PROCESSING ||
+        state == DuqState.PLAYING || state == DuqState.LISTENING
+    val orbitMs = when (state) {
+        DuqState.PROCESSING -> 1400
+        DuqState.RECORDING -> 2200
+        else -> 3200
+    }
+    val orbitAngle by transition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(orbitMs, easing = LinearEasing), RepeatMode.Restart),
+        label = "orbit"
+    )
+    val orbitCount = when (state) {
+        DuqState.PROCESSING -> 8
+        DuqState.RECORDING -> 6
+        else -> 5
+    }
+
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        // Цветной статус-halo за уткой — радиальный градиент, дышит вместе с состоянием.
+        // Цветной статус-halo + орбитальные частицы за уткой.
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .drawBehind {
+                    val cx = size.width * 0.5f
+                    val cy = size.height * 0.46f
+                    val center = Offset(cx, cy)
                     val maxR = size.minDimension * 0.62f
                     val r = maxR * (0.72f + 0.28f * haloPulse)
                     val a = haloPeak * haloPulse
@@ -139,12 +164,27 @@ fun DuqDuck(
                                 0.45f to haloColor.copy(alpha = a * 0.45f),
                                 1f to Color.Transparent
                             ),
-                            center = Offset(size.width * 0.5f, size.height * 0.46f),
-                            radius = r
+                            center = center, radius = r
                         ),
-                        radius = r,
-                        center = Offset(size.width * 0.5f, size.height * 0.46f)
+                        radius = r, center = center
                     )
+                    // Орбитальные точки: по окружности, пульсируют по размеру, «хвост» по alpha.
+                    if (orbitActive) {
+                        val orbR = maxR * 0.82f
+                        for (i in 0 until orbitCount) {
+                            val ang = Math.toRadians((orbitAngle + i * (360f / orbitCount)).toDouble())
+                            val px = cx + (orbR * kotlin.math.cos(ang)).toFloat()
+                            val py = cy + (orbR * kotlin.math.sin(ang)).toFloat()
+                            // голова кометы ярче хвоста
+                            val lead = (orbitCount - i).toFloat() / orbitCount
+                            val dotR = size.minDimension * (0.012f + 0.018f * lead)
+                            drawCircle(
+                                color = haloColor.copy(alpha = (0.25f + 0.6f * lead) * (0.6f + 0.4f * haloPulse)),
+                                radius = dotR,
+                                center = Offset(px, py)
+                            )
+                        }
+                    }
                 }
         )
         Image(

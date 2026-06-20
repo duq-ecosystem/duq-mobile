@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -487,6 +488,63 @@ fun MainScreen(
                     .align(Alignment.Center)
                     .size(220.dp)
             )
+
+            // Статус-лейбл «что делает DUQ» — различает фазы голосового цикла
+            // (слушаю → распознаю речь → думаю → озвучиваю), плавно сменяется.
+            val phaseText: String? = when {
+                voiceInput == VoiceInputState.RECORDING -> stringResource(R.string.status_listening)
+                voiceInput == VoiceInputState.TRANSCRIBING -> stringResource(R.string.status_transcribing)
+                audioPlaybackInfo.state == PlaybackState.PLAYING -> stringResource(R.string.status_playing)
+                isTextProcessing -> stringResource(R.string.status_processing)
+                state == DuqState.ERROR -> stringResource(R.string.status_error)
+                else -> null
+            }
+            val phaseColor = when {
+                voiceInput == VoiceInputState.RECORDING -> DuqColors.error
+                voiceInput == VoiceInputState.TRANSCRIBING -> Color(0xFF7C4DFF)
+                audioPlaybackInfo.state == PlaybackState.PLAYING -> Color(0xFF00E676)
+                isTextProcessing -> Color(0xFF7C4DFF)
+                else -> DuqColors.error
+            }
+            // Пульс точки-индикатора рядом со статусом.
+            val labelTransition = rememberInfiniteTransition(label = "label")
+            val dotPulse by labelTransition.animateFloat(
+                initialValue = 0.3f, targetValue = 1f,
+                animationSpec = infiniteRepeatable(tween(620, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                label = "dot"
+            )
+            androidx.compose.animation.AnimatedContent(
+                targetState = phaseText,
+                transitionSpec = {
+                    (androidx.compose.animation.fadeIn(tween(220)) +
+                        androidx.compose.animation.slideInVertically { it / 2 }) togetherWith
+                        androidx.compose.animation.fadeOut(tween(160))
+                },
+                label = "voicePhase",
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = 142.dp)
+            ) { txt ->
+                if (txt != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier
+                                .size(7.dp)
+                                .alpha(dotPulse)
+                                .clip(CircleShape)
+                                .background(phaseColor)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = txt,
+                            color = phaseColor,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp
+                        )
+                    }
+                }
+            }
         }
 
         // Header row with conversation title and settings.

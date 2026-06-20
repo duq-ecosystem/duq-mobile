@@ -12,8 +12,10 @@
     <string name="stop_service">Stop Listening</string>
     <string name="status_idle">ЗАЖМИ МИКРОФОН — ГОВОРИ</string>
     <string name="status_listening">СЛУШАЮ…</string>
+    <string name="status_transcribing">РАСПОЗНАЮ РЕЧЬ…</string>
+    <string name="status_sending">ОТПРАВЛЯЮ…</string>
     <string name="status_processing">ДУМАЮ…</string>
-    <string name="status_playing">ОТВЕЧАЮ…</string>
+    <string name="status_playing">ОЗВУЧИВАЮ ОТВЕТ…</string>
     <string name="status_error">ОШИБКА</string>
     <string name="status_recording">СЛУШАЮ…</string>
     <string name="status_service_stopped">Service stopped</string>
