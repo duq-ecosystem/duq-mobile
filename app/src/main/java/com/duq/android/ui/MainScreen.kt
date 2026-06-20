@@ -48,9 +48,17 @@ import androidx.compose.ui.Alignment
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -468,15 +476,16 @@ fun MainScreen(
                 .fillMaxSize()
                 .hazeSource(hazeState)
         ) {
-            // Тусклее в покое (меньше артефактов на краях пузырей), ярче при
-            // активности — заметна смена состояния (запись/ответ/проигрывание).
-            val duckAlpha = if (state == DuqState.IDLE) 0.32f else 0.6f
+            // Силуэт тусклее в покое (меньше артефактов на краях пузырей), заметно ярче
+            // при активности. Halo при этом НЕ глушится — он рисуется на полной яркости
+            // внутри DuqDuck, так что цветные вспышки статуса видны всегда.
+            val duckAlpha = if (state == DuqState.IDLE) 0.42f else 0.85f
             DuqDuck(
                 state = state,
+                silhouetteAlpha = duckAlpha,
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(220.dp)
-                    .alpha(duckAlpha)
             )
         }
 
@@ -719,51 +728,93 @@ fun MainScreen(
                 // (push-to-talk). Тап во время TTS — стоп воспроизведения.
                 val hasText = textInput.isNotBlank()
                 val recording = voiceInput == VoiceInputState.RECORDING
+                val transcribing = voiceInput == VoiceInputState.TRANSCRIBING
+
+                // Живые анимации кнопки: пульс при записи + сама кнопка слегка «дышит».
+                val btnAnim = rememberInfiniteTransition(label = "recBtn")
+                val btnPulse by btnAnim.animateFloat(
+                    initialValue = 0f, targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        tween(if (recording) 650 else 900, easing = FastOutSlowInEasing),
+                        RepeatMode.Reverse
+                    ),
+                    label = "btnPulse"
+                )
+                val btnScale = if (recording) 1f + 0.10f * btnPulse else 1f
+                val btnColor = when {
+                    recording -> DuqColors.error
+                    transcribing -> Color(0xFF7C4DFF)   // фиолетовый — совпадает с halo «распознаю»
+                    hasText -> DuqColors.primary
+                    else -> DuqColors.surfaceElevated
+                }
+
                 Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(
-                            when {
-                                recording -> DuqColors.error
-                                hasText -> DuqColors.primary
-                                else -> DuqColors.surfaceElevated
-                            }
-                        )
-                        .pointerInput(textInput, audioPlaybackInfo.state) {
-                            awaitEachGesture {
-                                awaitFirstDown()
-                                // Удержание > 220мс запускает запись (через корутину, т.к.
-                                // в pointer-scope нет withTimeout); короткий тап — отправка.
-                                var recordingStarted = false
-                                val holdJob = pttScope.launch {
-                                    kotlinx.coroutines.delay(220)
-                                    recordingStarted = true
-                                    viewModel.startVoiceInput()
-                                }
-                                waitForUpOrCancellation()
-                                holdJob.cancel()
-                                if (recordingStarted) {
-                                    viewModel.stopVoiceInput()  // отпустили → стоп + отправка транскрипта
-                                } else if (audioPlaybackInfo.state == PlaybackState.PLAYING) {
-                                    audioPlaybackManager.stop()
-                                } else if (textInput.isNotBlank()) {
-                                    viewModel.sendTextMessage(textInput); textInput = ""
-                                }
-                            }
-                        },
+                    modifier = Modifier.size(64.dp),   // запас под пульс-кольцо
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = when {
-                            recording -> Icons.Outlined.Stop
-                            hasText -> Icons.AutoMirrored.Outlined.Send
-                            else -> Icons.Outlined.Mic
-                        },
-                        contentDescription = if (hasText) "Отправить" else "Запись (удерживай)",
-                        tint = if (hasText || recording) Color.Black else DuqColors.textSecondary,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    // Расходящееся пульсирующее кольцо — видно, что идёт запись.
+                    if (recording) {
+                        Box(Modifier
+                            .size(48.dp)
+                            .drawBehind {
+                                val rr = size.minDimension / 2f * (1f + 0.55f * btnPulse)
+                                drawCircle(
+                                    color = DuqColors.error.copy(alpha = 0.45f * (1f - btnPulse)),
+                                    radius = rr
+                                )
+                            }
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .scale(btnScale)
+                            .clip(CircleShape)
+                            .background(btnColor)
+                            .pointerInput(textInput, audioPlaybackInfo.state) {
+                                awaitEachGesture {
+                                    awaitFirstDown()
+                                    // Удержание > 220мс запускает запись (через корутину, т.к.
+                                    // в pointer-scope нет withTimeout); короткий тап — отправка.
+                                    var recordingStarted = false
+                                    val holdJob = pttScope.launch {
+                                        kotlinx.coroutines.delay(220)
+                                        recordingStarted = true
+                                        viewModel.startVoiceInput()
+                                    }
+                                    waitForUpOrCancellation()
+                                    holdJob.cancel()
+                                    if (recordingStarted) {
+                                        viewModel.stopVoiceInput()  // отпустили → стоп + отправка транскрипта
+                                    } else if (audioPlaybackInfo.state == PlaybackState.PLAYING) {
+                                        audioPlaybackManager.stop()
+                                    } else if (textInput.isNotBlank()) {
+                                        viewModel.sendTextMessage(textInput); textInput = ""
+                                    }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (transcribing) {
+                            // Идёт распознавание (on-device whisper) — крутящийся индикатор.
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = when {
+                                    recording -> Icons.Outlined.Stop
+                                    hasText -> Icons.AutoMirrored.Outlined.Send
+                                    else -> Icons.Outlined.Mic
+                                },
+                                contentDescription = if (hasText) "Отправить" else "Запись (удерживай)",
+                                tint = if (hasText || recording) Color.Black else DuqColors.textSecondary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
