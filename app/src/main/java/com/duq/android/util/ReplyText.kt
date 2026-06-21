@@ -3,15 +3,23 @@ package com.duq.android.util
 /**
  * Normalizes assistant reply text before it is shown to the user.
  *
- * The engine persona sometimes emits control sentinels / tool markers that leak
- * into the streamed chat text:
- *  - `NO_REPLY` — "don't surface anything", either alone or appended to real
- *    text ("Астана, без изменений.\n\nNO_REPLY").
- *  - `SESSION_STATUS` — the display marker of the built-in `session_status` tool;
- *    it leaks as a prefix glued to the reply ("SESSION_STATUSПроблема — …").
+ * The app subscribes to the RAW session feed (`sessions.messages.subscribe`),
+ * which streams every assistant turn verbatim. The gateway strips control tokens
+ * from `chat.history` (server-side `isSuppressedControlReplyText`), but the LIVE
+ * stream carries them, so the client must strip the same tokens from anything it
+ * renders — otherwise heartbeat acks etc. surface as junk bubbles.
  *
- * The gateway strips pure sentinel rows from history, but streamed deltas still
- * carry them, so the client must clean anything it renders.
+ *  - `NO_REPLY` — "don't surface anything", alone or appended to real text.
+ *  - `HEARTBEAT_OK` — heartbeat ack token. Heartbeat runs in the MAIN session (so
+ *    its proactive messages reach the app), and on quiet ticks replies HEARTBEAT_OK;
+ *    the engine marks it suppressible, so it must never render. (Stripping it here
+ *    is what lets heartbeat stay in main instead of an isolated session.)
+ *  - `SESSION_STATUS` — display marker of the built-in `session_status` tool;
+ *    leaks glued to the reply ("SESSION_STATUSПроблема — …").
+ *
+ * NB: tool-failure notices ("⚠️ … failed") are NOT scrubbed here — those were a
+ * brittle regex (could clip real ⚠️ content); the toolResult-as-message leak is
+ * fixed properly in fetchHistory (role filter).
  */
 object ReplyText {
 
@@ -20,6 +28,7 @@ object ReplyText {
     // (incl. Cyrillic), so it is NOT word-boundary anchored.
     private val SENTINELS = listOf(
         Regex("(?i)\\bno_reply\\b"),
+        Regex("(?i)\\bheartbeat_ok\\b"),
         Regex("(?i)SESSION_STATUS"),
     )
 
