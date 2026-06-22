@@ -469,24 +469,17 @@ fun MainScreen(
                     ) {
                         Text(text = "💬", fontSize = 20.sp)
                         Spacer(modifier = Modifier.width(14.dp))
-                        // Саммари темы основным текстом (как в ChatGPT); если темы ещё нет —
-                        // показываем дату. Дата уходит подписью под темой.
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = conv.summary ?: conv.dateLabel,
-                                fontSize = 16.sp,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (selected) DuqColors.primary else DuqColors.textPrimary,
-                                maxLines = 2
-                            )
-                            if (conv.summary != null) {
-                                Text(
-                                    text = conv.dateLabel,
-                                    fontSize = 12.sp,
-                                    color = DuqColors.textSecondary
-                                )
-                            }
-                        }
+                        // В списке — ТОЛЬКО саммари темы (как в ChatGPT). Дата (Сегодня/Вчера/
+                        // «20 июня») живёт ТОЛЬКО в шапке-кнопке, в списке её нет. Пока тема не
+                        // сгенерилась (новый/пустой чат) — нейтральный «Новый чат», не дата.
+                        Text(
+                            text = conv.summary ?: "Новый чат",
+                            fontSize = 16.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (selected) DuqColors.primary else DuqColors.textPrimary,
+                            maxLines = 2,
+                            modifier = Modifier.weight(1f)
+                        )
                         if (selected) Text(text = "✓", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DuqColors.primary)
                     }
                 }
