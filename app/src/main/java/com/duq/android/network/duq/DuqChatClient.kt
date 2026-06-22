@@ -104,8 +104,12 @@ class DuqChatClient @Inject constructor(
      * вызывающий (ViewModel) успел взвести watchdog/спиннер до прихода ответа. Ответ
      * публикуется терминальным chat-event с собственным runId; ошибка → state="error".
      */
-    suspend fun sendMessage(text: String) {
-        val runId = UUID.randomUUID().toString()
+    // runId текущего in-flight тёрна — reasoning-шаги (приходят по /duq/ws, несут
+    // trace_id ядра, а не наш runId) вешаются на него (один тёрн за раз — однопользов.).
+    @Volatile private var currentRunId: String? = null
+
+    suspend fun sendMessage(text: String, runId: String = UUID.randomUUID().toString()) {
+        currentRunId = runId
         scope.launch {
             try {
                 val taskId = rest.sendMessage(text)
@@ -130,7 +134,34 @@ class DuqChatClient @Inject constructor(
                         errorMessage = e.message ?: "Send failed"
                     )
                 )
+            } finally {
+                if (currentRunId == runId) currentRunId = null
             }
+        }
+    }
+
+    /**
+     * Reasoning-событие из ядра (по /duq/ws, [DuqNodeClient]) → шаг агента в пузыре
+     * текущего тёрна. Показываем порядок действий агента (какой tool вызвал) live —
+     * раньше reasoning ядро слало, но app его игнорировал (Ф3a-заглушка). Привязка к
+     * [currentRunId] (один активный тёрн), т.к. reasoning несёт trace_id ядра, не runId.
+     */
+    fun onReasoning(eventType: String, toolName: String?, message: String, iteration: Int) {
+        val runId = currentRunId ?: return
+        // Интересен порядок ДЕЙСТВИЙ (вызовов инструментов). REASONING_ACTION с tool_name.
+        if (eventType != "REASONING_ACTION") return
+        val tool = (toolName ?: message).ifBlank { "tool" }
+        scope.launch {
+            _agentSteps.emit(
+                OcAgentStep(
+                    runId = runId,
+                    itemId = "tool:$tool-$iteration",
+                    kind = "tool",
+                    title = tool,
+                    status = "running",
+                    phase = "update",
+                )
+            )
         }
     }
 

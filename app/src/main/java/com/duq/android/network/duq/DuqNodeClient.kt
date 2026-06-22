@@ -122,8 +122,23 @@ class DuqNodeClient @Inject constructor(
         when (frame["type"]) {
             "phone.command" -> handleCommand(frame)
             "chat.message" -> handleChatMessage(frame)
-            // "pong" and reasoning frames are ignored by the node host.
+            else -> {
+                // reasoning-события ядра несут "event_type" (REASONING_*), не "type" —
+                // прокидываем в чат как live-шаги агента (что вызывает и в каком порядке).
+                val et = frame["event_type"] as? String
+                if (et != null && et.startsWith("REASONING_")) handleReasoning(et, frame)
+            }
         }
+    }
+
+    /** REASONING_* фрейм → шаг агента в текущем тёрне (через DuqChatClient). */
+    private fun handleReasoning(eventType: String, frame: Map<String, Any?>) {
+        @Suppress("UNCHECKED_CAST")
+        val data = (frame["data"] as? Map<String, Any?>) ?: emptyMap()
+        val toolName = data["tool_name"] as? String
+        val message = data["message"] as? String ?: ""
+        val iteration = (data["iteration"] as? Number)?.toInt() ?: 0
+        chatClient.onReasoning(eventType, toolName, message, iteration)
     }
 
     /** Live chat message pushed from the core — hand to the chat client to render. */

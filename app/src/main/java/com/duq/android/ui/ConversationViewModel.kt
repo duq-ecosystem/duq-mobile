@@ -396,10 +396,20 @@ class ConversationViewModel @Inject constructor(
 
     fun sendTextMessage(text: String) {
         if (text.isBlank()) return
-        _messages.update { it + Message(role = MessageRole.USER, content = text) }
+        // runId тёрна задаём ЗДЕСЬ и сразу заводим пустой пузырь ассистента (streaming):
+        // на него live-вешаются reasoning-шаги (что агент вызывает по порядку), пока ядро
+        // думает; финальный текст (тот же runId) заполнит пузырь. Без deltas у ядра это
+        // единственный способ показать live-активность агента.
+        val runId = java.util.UUID.randomUUID().toString()
+        currentRunId = runId
+        _messages.update {
+            it + Message(role = MessageRole.USER, content = text) +
+                Message(id = runId, role = MessageRole.ASSISTANT, content = "", isStreaming = true)
+        }
+        _isProcessing.value = true
         viewModelScope.launch {
             try {
-                gatewayClient.sendMessage(text)
+                gatewayClient.sendMessage(text, runId)
                 armReplyWatchdog()
             } catch (e: Exception) {
                 Log.e(TAG, "sendMessage failed: ${e.message}")
