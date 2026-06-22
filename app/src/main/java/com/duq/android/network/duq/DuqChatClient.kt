@@ -178,7 +178,28 @@ class DuqChatClient @Inject constructor(
         val convs = runCatching { rest.conversations() }.getOrElse {
             logger.w(TAG, "conversations failed: ${it.message}"); return emptyList()
         }
-        return convs.map { DuqConversation(it.id, it.title ?: "Чат", it.lastMessageAt, it.isActive) }
+        // Заголовок — человеческая русская дата по дню начала беседы: сегодня → «Сегодня»,
+        // вчера → «Вчера», дальше — «20 июня» / «20 июня 2025». Серверный title (англ.
+        // "June 22, 2026") как fallback, если started_at не пришёл.
+        return convs.map {
+            DuqConversation(it.id, conversationTitle(it.startedAt, it.title), it.lastMessageAt, it.isActive)
+        }
+    }
+
+    /** Русский относительный заголовок беседы по её started_at (epoch seconds). */
+    private fun conversationTitle(startedAtEpoch: Long, fallback: String?): String {
+        if (startedAtEpoch <= 0L) return fallback?.takeIf { it.isNotBlank() } ?: "Чат"
+        val zone = java.time.ZoneId.systemDefault()
+        val date = java.time.Instant.ofEpochSecond(startedAtEpoch).atZone(zone).toLocalDate()
+        val today = java.time.LocalDate.now(zone)
+        return when (date) {
+            today -> "Сегодня"
+            today.minusDays(1) -> "Вчера"
+            else -> {
+                val pattern = if (date.year == today.year) "d MMMM" else "d MMMM yyyy"
+                date.format(java.time.format.DateTimeFormatter.ofPattern(pattern, java.util.Locale("ru")))
+            }
+        }
     }
 
     /**
