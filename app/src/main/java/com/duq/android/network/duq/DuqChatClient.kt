@@ -201,10 +201,13 @@ class DuqChatClient @Inject constructor(
         return t
     }
 
-    /** Русский относительный заголовок беседы по её started_at (epoch seconds). */
+    /** Русский относительный заголовок беседы по её started_at (epoch seconds).
+     *  В UTC — ядро бакетит беседы по UTC-дню (started_at >= UTC-полночь), и серверный
+     *  датный title тоже в UTC; локальная TZ телефона (напр. Almaty +5) рассинхронит
+     *  лейбл с бакетом (беседа «вчера по UTC» стала бы «сегодня» по локали). */
     private fun dateLabel(startedAtEpoch: Long, fallback: String?): String {
         if (startedAtEpoch <= 0L) return fallback?.takeIf { it.isNotBlank() } ?: "Чат"
-        val zone = java.time.ZoneId.systemDefault()
+        val zone = java.time.ZoneOffset.UTC
         val date = java.time.Instant.ofEpochSecond(startedAtEpoch).atZone(zone).toLocalDate()
         val today = java.time.LocalDate.now(zone)
         return when (date) {
