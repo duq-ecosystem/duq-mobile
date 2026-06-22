@@ -11,21 +11,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Лента дайджестов (📰) — СОВЕРШЕННО отдельная сущность от истории уведомлений
- * ([NotificationInbox]). Дайджесты (финансовые/новостные сводки от агента) живут
- * в своём хранилище и своей ленте; очистка уведомлений их НЕ трогает и наоборот.
+ * Лента дайджестов (📰) — отдельная сущность от истории уведомлений ([NotificationInbox]).
+ * Дайджесты (финансовые/новостные сводки от агента) живут в своём хранилище и своей ленте.
  *
- * Системное push-уведомление «пришёл дайджест» при этом показывается стандартно
- * (см. DuqNotificationManager) — но сам дайджест сюда, а не в историю уведомлений.
- *
- * Своё SharedPreferences-хранилище (JSON), пишется и из non-Hilt мест через [record].
+ * ⚠️ Live: [record] вызывается из non-Hilt места (PhoneCommandExecutor → DuqNotificationManager),
+ * поэтому общий StateFlow держим в companion (static). И instance (у ViewModel через Hilt),
+ * и record() пишут в ОДИН [_flow] → лента обновляется в UI мгновенно, без перезахода в app.
+ * (Раньше record() писал только prefs, а живой _items синглтона не трогал → лист не обновлялся.)
  */
 @Singleton
 class DigestInbox @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    // @Keep: сериализуется Gson через рефлексию; класс вне data.model, package
-    // keep-rule его не покрывает — без @Keep R8 переименует поля и лента пустеет.
     @androidx.annotation.Keep
     data class Item(
         val id: Long,
@@ -34,14 +31,18 @@ class DigestInbox @Inject constructor(
         val timestampMs: Long
     )
 
-    private val _items = MutableStateFlow(load(context))
-    val items: StateFlow<List<Item>> = _items.asStateFlow()
+    val items: StateFlow<List<Item>> = _flow.asStateFlow()
 
-    fun refresh() = synchronized(LOCK) { _items.value = load(context) }
+    init {
+        // Подтянуть сохранённое при создании синглтона (старт приложения).
+        refresh()
+    }
+
+    fun refresh() = synchronized(LOCK) { _flow.value = load(context) }
 
     fun clear() = synchronized(LOCK) {
         prefs(context).edit().remove(KEY).commit()
-        _items.value = emptyList()
+        _flow.value = emptyList()
     }
 
     companion object {
@@ -52,6 +53,9 @@ class DigestInbox @Inject constructor(
         private val LOCK = Any()
         private val seq = java.util.concurrent.atomic.AtomicLong(0)
 
+        // Единый источник правды для UI — общий для instance и record().
+        private val _flow = MutableStateFlow<List<Item>>(emptyList())
+
         private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
         private fun load(c: Context): List<Item> = try {
@@ -59,15 +63,17 @@ class DigestInbox @Inject constructor(
             gson.fromJson(json, object : TypeToken<List<Item>>() {}.type) ?: emptyList()
         } catch (_: Exception) { emptyList() }
 
-        /** Append a digest from ANY call site. Newest first, capped. */
+        /** Append a digest from ANY call site (incl. non-Hilt). Newest first, capped, LIVE. */
         fun record(context: Context, title: String, text: String, timestampMs: Long) =
             synchronized(LOCK) {
                 val current = load(context)
                 val id = timestampMs * 1000 + (seq.getAndIncrement() % 1000)
                 val updated = (listOf(Item(id, title, text, timestampMs)) + current).take(MAX)
                 val ok = prefs(context).edit().putString(KEY, gson.toJson(updated)).commit()
-                com.duq.android.logging.FileLogger(context).i("DigestInbox",
-                    "record ok=$ok now=${updated.size} title=$title")
+                _flow.value = updated  // ← живое обновление ленты в UI
+                com.duq.android.logging.FileLogger(context).i(
+                    "DigestInbox", "record ok=$ok now=${updated.size} title=$title"
+                )
             }
     }
 }

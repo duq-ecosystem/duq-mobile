@@ -32,7 +32,10 @@ import com.duq.android.ui.theme.DuqColors
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SectionScreen(sectionKey: String, onBack: () -> Unit, vm: SectionViewModel = hiltViewModel()) {
-    EngineScreen(vm, onBack)
+    when (sectionKey) {
+        "automation" -> AutomationScreen(onBack)
+        else -> EngineScreen(vm, onBack)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

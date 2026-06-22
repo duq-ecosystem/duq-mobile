@@ -132,7 +132,97 @@ class DuqRestClient @Inject constructor(
             gson.fromJson<List<HistoryMsg>>(raw, type) ?: emptyList()
         }
     }
+
+    // ───────── Скиллы (md-промпты) — /duq/api/skills ─────────
+
+    suspend fun listSkills(): List<SkillDto> = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(url("skills")).withServerAuth().get().build()
+        httpClient.newCall(req).execute().use { resp ->
+            val raw = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw DuqApiException("skills ${resp.code}")
+            gson.fromJson(raw, SkillListDto::class.java)?.skills ?: emptyList()
+        }
+    }
+
+    suspend fun createSkill(name: String, content: String, description: String?) =
+        withContext(Dispatchers.IO) {
+            val body = gson.toJson(SkillCreateBody(name, content, description)).toRequestBody(JSON)
+            val req = Request.Builder().url(url("skills")).withServerAuth().post(body).build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful)
+                    throw DuqApiException("createSkill ${resp.code}: ${resp.body?.string()?.take(200)}")
+            }
+        }
+
+    suspend fun updateSkill(
+        name: String, content: String? = null, description: String? = null, enabled: Boolean? = null
+    ) = withContext(Dispatchers.IO) {
+        val body = gson.toJson(SkillUpdateBody(content, description, enabled)).toRequestBody(JSON)
+        val req = Request.Builder().url(url("skills/$name")).withServerAuth().put(body).build()
+        httpClient.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) throw DuqApiException("updateSkill ${resp.code}")
+        }
+    }
+
+    suspend fun deleteSkill(name: String) = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(url("skills/$name")).withServerAuth().delete().build()
+        httpClient.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful && resp.code != 404) throw DuqApiException("deleteSkill ${resp.code}")
+        }
+    }
+
+    // ───────── Крон-задачи — /duq/api/scheduler/tasks ─────────
+
+    suspend fun listCronTasks(): List<CronTaskDto> = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(url("scheduler/tasks")).withServerAuth().get().build()
+        httpClient.newCall(req).execute().use { resp ->
+            val raw = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw DuqApiException("scheduler ${resp.code}")
+            gson.fromJson(raw, CronTaskListDto::class.java)?.tasks ?: emptyList()
+        }
+    }
+
+    suspend fun createCronTask(name: String, cron: String, skill: String, timezone: String) =
+        withContext(Dispatchers.IO) {
+            val body = gson.toJson(CronCreateBody(name, cron, skill, timezone)).toRequestBody(JSON)
+            val req = Request.Builder().url(url("scheduler/tasks")).withServerAuth().post(body).build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful)
+                    throw DuqApiException("createCron ${resp.code}: ${resp.body?.string()?.take(200)}")
+            }
+        }
+
+    suspend fun deleteCronTask(taskId: String) = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(url("scheduler/tasks/$taskId")).withServerAuth().delete().build()
+        httpClient.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful && resp.code != 404) throw DuqApiException("deleteCron ${resp.code}")
+        }
+    }
 }
 
 /** Ошибка вызова REST-API ядра DUQ. */
 class DuqApiException(message: String) : Exception(message)
+
+// ───────── DTO скиллов/крона ─────────
+
+data class SkillDto(
+    val name: String,
+    val description: String?,
+    val content: String,
+    val enabled: Boolean,
+    val allowed_tools: List<String>?
+)
+data class SkillListDto(val skills: List<SkillDto>?, val total: Int?)
+data class SkillCreateBody(val name: String, val content: String, val description: String?)
+data class SkillUpdateBody(val content: String?, val description: String?, val enabled: Boolean?)
+
+data class CronTaskDto(
+    val task_id: String,
+    val name: String?,
+    val cron: String?,
+    val timezone: String?,
+    val next_run: String?,
+    val skill: String?
+)
+data class CronTaskListDto(val tasks: List<CronTaskDto>?, val total: Int?)
+data class CronCreateBody(val name: String, val cron: String, val skill: String, val timezone: String)
