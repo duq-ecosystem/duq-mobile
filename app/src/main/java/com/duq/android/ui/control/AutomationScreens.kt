@@ -205,6 +205,8 @@ private fun CronItem(t: CronTaskDto, onTap: () -> Unit, onToggle: () -> Unit, on
     }
 }
 
+private val WEEKDAYS = listOf("Пн" to 1, "Вт" to 2, "Ср" to 3, "Чт" to 4, "Пт" to 5, "Сб" to 6, "Вс" to 0)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CronSheet(
@@ -213,20 +215,56 @@ private fun CronSheet(
 ) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val editMode = initial != null
+    val parsed = remember(initial?.cron) { parseCron(initial?.cron) }  // (hour, minute, daysSet)
     var name by remember { mutableStateOf(initial?.name ?: "") }
-    var cron by remember { mutableStateOf(initial?.cron ?: "0 9 * * *") }
     var skill by remember { mutableStateOf(initial?.skill ?: skills.firstOrNull() ?: "") }
     var menu by remember { mutableStateOf(false) }
+    val time = rememberTimePickerState(initialHour = parsed.first, initialMinute = parsed.second, is24Hour = true)
+    val days = remember { mutableStateListOf<Int>().apply { addAll(parsed.third) } }
+
+    val cron = buildCron(time.hour, time.minute, days.toSet())
+
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = DuqColors.surfaceElevated) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 28.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(if (editMode) "Редактировать задачу" else "Новая задача",
-                color = DuqColors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                color = DuqColors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.align(Alignment.Start))
             AutoField(name, { name = it }, "Название задачи")
-            AutoField(cron, { cron = it }, "cron: мин час день месяц день-недели")
-            Text(cronHuman(cron), color = DuqColors.textDim, fontSize = 12.sp)
+
+            Text("Во сколько запускать", color = DuqColors.textSecondary, fontSize = 13.sp,
+                modifier = Modifier.align(Alignment.Start))
+            TimeInput(state = time, colors = TimePickerDefaults.colors(
+                timeSelectorSelectedContainerColor = DuqColors.primary,
+                timeSelectorSelectedContentColor = DuqColors.background,
+                timeSelectorUnselectedContainerColor = DuqColors.surfaceVariant,
+                timeSelectorUnselectedContentColor = DuqColors.textPrimary
+            ))
+
+            Text("В какие дни (ничего = каждый день)", color = DuqColors.textSecondary, fontSize = 13.sp,
+                modifier = Modifier.align(Alignment.Start))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                WEEKDAYS.forEach { (label, num) ->
+                    val on = num in days
+                    FilterChip(
+                        selected = on,
+                        onClick = { if (on) days.remove(num) else days.add(num) },
+                        label = { Text(label, fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = DuqColors.primary,
+                            selectedLabelColor = DuqColors.background
+                        )
+                    )
+                }
+            }
+            Text("🕒 " + cronHuman(cron), color = DuqColors.textDim, fontSize = 12.sp,
+                modifier = Modifier.align(Alignment.Start))
+
             ExposedDropdownMenuBox(expanded = menu, onExpandedChange = { menu = it }) {
                 OutlinedTextField(
                     value = skill, onValueChange = {}, readOnly = true,
@@ -244,13 +282,33 @@ private fun CronSheet(
                 }
             }
             Button(
-                onClick = { if (name.isNotBlank() && cron.isNotBlank() && skill.isNotBlank()) onSave(name, cron, skill) },
-                enabled = name.isNotBlank() && cron.isNotBlank() && skill.isNotBlank(),
+                onClick = { if (name.isNotBlank() && skill.isNotBlank()) onSave(name, cron, skill) },
+                enabled = name.isNotBlank() && skill.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = DuqColors.primary, contentColor = DuqColors.background),
                 modifier = Modifier.fillMaxWidth()
             ) { Text(if (editMode) "Сохранить" else "Создать задачу") }
         }
     }
+}
+
+/** cron "M H * * D[,D]" → (hour, minute, daysSet). Дефолт 9:00 каждый день. */
+private fun parseCron(cron: String?): Triple<Int, Int, Set<Int>> {
+    val p = cron?.trim()?.split(Regex("\\s+")) ?: emptyList()
+    if (p.size == 5) {
+        val mi = p[0].toIntOrNull(); val hh = p[1].toIntOrNull()
+        if (mi != null && hh != null) {
+            val days = if (p[4] == "*") emptySet()
+            else p[4].split(",").mapNotNull { it.toIntOrNull() }.toSet()
+            return Triple(hh, mi, days)
+        }
+    }
+    return Triple(9, 0, emptySet())
+}
+
+/** (hour, minute, days) → cron "M H * * D". Пусто дней → каждый день (*). */
+private fun buildCron(hour: Int, minute: Int, days: Set<Int>): String {
+    val dow = if (days.isEmpty()) "*" else days.sorted().joinToString(",")
+    return "$minute $hour * * $dow"
 }
 
 /* ════════════════════ общие компоненты ════════════════════ */
@@ -312,6 +370,8 @@ private fun AutoField(value: String, onChange: (String) -> Unit, label: String, 
 }
 
 /** "0 9 * * *" → "каждый день в 09:00"; иначе сырой cron. */
+private val DOW_RU = mapOf(0 to "Вс", 1 to "Пн", 2 to "Вт", 3 to "Ср", 4 to "Чт", 5 to "Пт", 6 to "Сб", 7 to "Вс")
+
 private fun cronHuman(cron: String?): String {
     if (cron.isNullOrBlank()) return "—"
     val p = cron.trim().split(Regex("\\s+"))
@@ -320,7 +380,9 @@ private fun cronHuman(cron: String?): String {
         val mi = m.toIntOrNull(); val hh = h.toIntOrNull()
         if (mi != null && hh != null && dom == "*" && mon == "*") {
             val time = "%02d:%02d".format(hh, mi)
-            return if (dow == "*") "каждый день в $time" else "по дням недели ($dow) в $time"
+            if (dow == "*") return "каждый день в $time"
+            val names = dow.split(",").mapNotNull { it.toIntOrNull()?.let(DOW_RU::get) }
+            return if (names.isNotEmpty()) "${names.joinToString(", ")} в $time" else cron
         }
     }
     return cron
