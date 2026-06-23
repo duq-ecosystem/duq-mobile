@@ -28,7 +28,20 @@ import com.google.gson.annotations.SerializedName
 data class MessageRequest(
     val message: String,
     @SerializedName("conversation_id") val conversationId: String? = null,
-    @SerializedName("new_conversation") val newConversation: Boolean? = null
+    @SerializedName("new_conversation") val newConversation: Boolean? = null,
+    @SerializedName("agent_id") val agentId: String? = null
+)
+
+/** Один агент из реестра ядра (GET /duq/api/agents) — профиль тулсета для пикера. */
+data class AgentInfo(
+    val id: String,
+    @SerializedName("display_name") val displayName: String,
+    val description: String = ""
+)
+
+/** Ответ GET /duq/api/agents. */
+data class AgentsResponse(
+    val agents: List<AgentInfo> = emptyList()
 )
 
 /** Ответ POST /duq/api/message — задача поставлена в очередь. */

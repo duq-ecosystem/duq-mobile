@@ -63,11 +63,13 @@ class DuqRestClient @Inject constructor(
         text: String,
         conversationId: String? = null,
         newConversation: Boolean = false,
+        agentId: String? = null,
     ): String = withContext(Dispatchers.IO) {
         val req0 = MessageRequest(
             message = text,
             conversationId = conversationId,
             newConversation = if (newConversation) true else null,
+            agentId = agentId,
         )
         val body = gson.toJson(req0).toRequestBody(JSON)
         val req = Request.Builder().url(url("message")).withServerAuth().post(body).build()
@@ -121,6 +123,16 @@ class DuqRestClient @Inject constructor(
             if (!resp.isSuccessful) throw DuqApiException("conversations ${resp.code}")
             val type = object : TypeToken<List<ConversationDto>>() {}.type
             gson.fromJson<List<ConversationDto>>(raw, type) ?: emptyList()
+        }
+    }
+
+    /** Реестр агентов ядра (профили тулсета) для пикера. */
+    suspend fun listAgents(): List<AgentInfo> = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(url("agents")).withServerAuth().get().build()
+        httpClient.newCall(req).execute().use { resp ->
+            val raw = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw DuqApiException("agents ${resp.code}")
+            gson.fromJson(raw, AgentsResponse::class.java)?.agents ?: emptyList()
         }
     }
 

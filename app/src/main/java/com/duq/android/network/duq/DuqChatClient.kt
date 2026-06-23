@@ -114,11 +114,12 @@ class DuqChatClient @Inject constructor(
         runId: String = UUID.randomUUID().toString(),
         conversationId: String? = null,
         newConversation: Boolean = false,
+        agentId: String? = null,
     ) {
         currentRunId = runId
         scope.launch {
             try {
-                val taskId = rest.sendMessage(text, conversationId, newConversation)
+                val taskId = rest.sendMessage(text, conversationId, newConversation, agentId)
                 val answer = rest.awaitResponse(taskId)
                 _chatEvents.emit(
                     OcChatEvent(runId = runId, state = "final", fullText = answer)
