@@ -588,6 +588,11 @@ class ConversationViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "TTS failed: ${e.message}"); null
             } ?: return@launch
+            // Помечаем сообщение как голосовое → в пузыре появляется кнопка play/pause
+            // (как в Telegram): можно переслушать ответ, а не только разовое авто-проигрывание.
+            _messages.update { msgs ->
+                msgs.map { if (it.id == messageId) it.copy(hasAudio = true) else it }
+            }
             audioPlaybackManager.play(messageId, audio)
         }
     }
