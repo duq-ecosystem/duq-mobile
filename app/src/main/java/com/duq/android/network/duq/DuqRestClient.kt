@@ -95,19 +95,19 @@ class DuqRestClient @Inject constructor(
     }
 
     /**
-     * Поллит задачу до терминального состояния и возвращает текст ответа.
-     * Бросает [DuqApiException] на failed/таймауте.
+     * Поллит задачу до терминального состояния и возвращает её payload (текст +
+     * флаг voice = решение модели озвучить). Бросает [DuqApiException] на failed/таймауте.
      */
     suspend fun awaitResponse(
         taskId: String,
         timeoutMs: Long = AppConfig.DUQ_TASK_TIMEOUT_MS,
         intervalMs: Long = AppConfig.DUQ_TASK_POLL_INTERVAL_MS
-    ): String {
+    ): TaskResponse {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
             val result = pollTask(taskId)
             when {
-                result.isCompleted -> return result.result?.response.orEmpty()
+                result.isCompleted -> return result.result ?: TaskResponse()
                 result.isFailed -> throw DuqApiException("task failed: ${result.error ?: result.status}")
                 else -> delay(intervalMs)
             }
