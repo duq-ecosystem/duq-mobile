@@ -63,8 +63,10 @@ class DuqNotificationManager @Inject constructor(
         val openIntent = PendingIntent.getActivity(
             context, id,
             Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-                // Пуш «обновление ядра доступно» → тап открывает раздел «Движок» (deep-link).
+                // NEW_TASK обязателен: из убитого состояния тап по пушу без него не
+                // доставляет extra (deep-link терялся) — как в AppUpdater-пуше.
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                // Пуш «обновление ядра доступно» → тап открывает раздел «Версия» (deep-link).
                 if (type == "core_update") putExtra("open_section", "version")
                 // Пуш дайджеста → тап открывает шторку уведомлений на разделе «Дайджесты».
                 if (type == "digest") putExtra("open_notifications", "digest")
