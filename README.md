@@ -1,6 +1,6 @@
 # Duq Android
 
-> Voice + chat AI assistant for Android, native two-way link to the OpenClaw engine.
+> Voice + chat AI assistant for Android, native two-way link to the DUQ core engine.
 
 Mobile client for DUQ (`com.duq.android`). Wake-word voice capture, streaming chat,
 and **native bot→phone control** over a single WebSocket gateway. The phone is both an
@@ -24,11 +24,11 @@ and **native bot→phone control** over a single WebSocket gateway. The phone is
 ## Architecture
 
 ```
-                       wss://on-za-menya.online/openclaw  (protocol v4)
+                       wss://on-za-menya.online/duq/ws
                                       │
         ┌─────────────────────────────┴─────────────────────────────┐
         ▼ operator session (phone → engine)        ▼ node session (engine → phone)
-  OpenClawGatewayClient                       OpenClawNodeClient
+  DuqChatClient                               DuqNodeClient
   chat / streaming replies                    node.invoke → camera/screen/location/notify
         │                                            │
   Hold duck (push-to-talk) → AudioRecorder (PCM 16k WAV)
@@ -37,7 +37,7 @@ and **native bot→phone control** over a single WebSocket gateway. The phone is
 ```
 
 Both sessions run from one device with **separate Ed25519 keypairs** (`operator` / `node`).
-Device identity matches the OpenClaw gateway contract byte-for-byte:
+Device identity matches the gateway contract byte-for-byte:
 
 - `publicKey` = base64url(raw 32-byte Ed25519 public key)
 - `device.id` = `SHA256(raw public key).hex`
@@ -97,7 +97,7 @@ token via `device.pair` / `device.pair.resolved`, then reused for the node sessi
 
 ```
 app/src/main/java/com/duq/android/
-├── network/openclaw/  # OpenClawGatewayClient (operator), OpenClawNodeClient (node), OpenClawProtocol
+├── network/duq/       # DuqChatClient (operator), DuqNodeClient (node), DuqProtocol
 ├── auth/              # DeviceIdentityManager (Ed25519 software)
 ├── service/           # DuqListenerService (foreground WS), VoiceCommandProcessor, BootReceiver,
 │                      #   DuqAccessibilityService, DuqVoiceInteractionService(+Session)
@@ -119,7 +119,7 @@ app/src/main/java/com/duq/android/
 All endpoints, timeouts and limits live in `config/AppConfig.kt` (single source of truth).
 
 - Backend: `https://on-za-menya.online`
-- Gateway WS: `wss://on-za-menya.online/openclaw` (overridable in Settings)
+- Gateway WS: `wss://on-za-menya.online/duq/ws` (overridable in Settings)
 - STT: `/stt/v1/audio/transcriptions`
 
 Wake-word sensitivity (`AppConfig.WAKE_WORD_SENSITIVITY`) and VAD silence timeout
@@ -137,7 +137,7 @@ Wake-word sensitivity (`AppConfig.WAKE_WORD_SENSITIVITY`) and VAD silence timeou
 ## Debugging
 
 ```bash
-adb logcat | grep -E "Duq|OpenClaw|WakeWord|VoiceActivity"
+adb logcat | grep -E "Duq|WakeWord|VoiceActivity"
 adb shell pm clear com.duq.android   # reset app data (re-pair afterwards)
 ```
 

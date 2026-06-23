@@ -250,7 +250,7 @@ dependencies {
     // Security - Encrypted SharedPreferences for token storage
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    // BouncyCastle - software Ed25519 device identity (matches OpenClaw gateway)
+    // BouncyCastle - software Ed25519 device identity (matches gateway)
     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
 
     // Voice Activity Detection (Silero VAD - DNN based, more accurate)
