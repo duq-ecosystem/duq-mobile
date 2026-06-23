@@ -27,6 +27,7 @@ class TtsClient @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val client = OkHttpClient.Builder()
+        .withDuqDns()
         .protocols(listOf(Protocol.HTTP_1_1))
         .connectTimeout(10, TimeUnit.SECONDS)
         .callTimeout(120, TimeUnit.SECONDS)

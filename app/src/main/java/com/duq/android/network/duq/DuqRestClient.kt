@@ -2,6 +2,7 @@ package com.duq.android.network.duq
 
 import com.duq.android.config.AppConfig
 import com.duq.android.logging.Logger
+import com.duq.android.network.withDuqDns
 import com.duq.android.network.withServerAuth
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -37,6 +38,7 @@ class DuqRestClient @Inject constructor(
 
     private val httpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
+            .withDuqDns()
             .connectTimeout(AppConfig.CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
             .readTimeout(AppConfig.READ_TIMEOUT_S, TimeUnit.SECONDS)
             .build()

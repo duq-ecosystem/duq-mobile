@@ -3,6 +3,7 @@ package com.duq.android.audio
 import android.content.Context
 import android.util.Log
 import com.duq.android.config.AppConfig
+import com.duq.android.network.withDuqDns
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -51,6 +52,7 @@ class WhisperLocal @Inject constructor(
 
     private val httpClient by lazy {
         OkHttpClient.Builder()
+            .withDuqDns()
             .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
             .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS) // большая модель — без общего лимита

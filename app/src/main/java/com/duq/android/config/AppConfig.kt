@@ -49,6 +49,16 @@ object AppConfig {
     val SERVER_TOKEN: String get() = com.duq.android.BuildConfig.SERVER_TOKEN
     const val SERVER_TOKEN_HEADER = "X-Auth-Token"
 
+    // ── DNS-over-HTTPS (обход «Unable to resolve host») ──
+    // Системный DNS у некоторых операторов/роутеров не резолвит наш домен (.online),
+    // хотя глобально он резолвится и Chrome ходит через свой DoH. Поэтому все наши
+    // OkHttp-клиенты резолвят через [com.duq.android.network.DohDns]: сначала системный
+    // резолвер, при UnknownHost — fallback на DoH (Cloudflare). bootstrap-IP DoH-провайдера
+    // = публичные anycast-адреса резолвера (константы провайдера, не инфра-параметр VPS) —
+    // чтобы не было курицы-яйца при резолве самого DoH-хоста.
+    const val DOH_RESOLVER_URL = "https://cloudflare-dns.com/dns-query"
+    val DOH_BOOTSTRAP_IPS = listOf("1.1.1.1", "1.0.0.1", "162.159.36.1", "162.159.46.1")
+
     // Network timeouts (seconds)
     const val CONNECT_TIMEOUT_S = 30L
     const val READ_TIMEOUT_S = 60L

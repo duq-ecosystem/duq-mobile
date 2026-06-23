@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import com.duq.android.BuildConfig
 import com.duq.android.config.AppConfig
 import com.duq.android.logging.FileLogger
+import com.duq.android.network.withDuqDns
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
@@ -57,6 +58,7 @@ class AppUpdater(private val context: Context, private val notificationsEnabled:
     // per-read timeout never fires because no bytes arrive — the download hangs
     // forever. callTimeout is a hard ceiling on the whole request as a backstop.
     private val client = OkHttpClient.Builder()
+        .withDuqDns()
         .protocols(listOf(Protocol.HTTP_1_1))
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)

@@ -52,6 +52,7 @@ class CoreUpdateClient @Inject constructor(
 
     private val gson = Gson()
     private val client = OkHttpClient.Builder()
+        .withDuqDns()
         .protocols(listOf(Protocol.HTTP_1_1))
         .connectTimeout(10, TimeUnit.SECONDS)
         // /status может отвечать дольше дефолтных 10с (npm view + версия ядра) — без

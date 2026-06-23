@@ -7,6 +7,7 @@ import com.duq.android.camera.CameraCapture
 import com.duq.android.config.AppConfig
 import com.duq.android.location.LocationDataSource
 import com.duq.android.logging.Logger
+import com.duq.android.network.withDuqDns
 import com.duq.android.network.withServerAuth
 import com.duq.android.screen.ScreenCaptureManager
 import com.duq.android.screen.ScreenRecorder
@@ -61,6 +62,7 @@ class PhoneCommandExecutor @Inject constructor(
     // long read timeout because transcription can take a while.
     private val sttClient by lazy {
         OkHttpClient.Builder()
+            .withDuqDns()
             .protocols(listOf(Protocol.HTTP_1_1))
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
