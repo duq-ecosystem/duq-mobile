@@ -133,9 +133,18 @@ class ChatAudioPlaybackManager @Inject constructor(
      */
     fun play(messageId: String, audioFile: File) {
         if (isReleased || !audioFile.exists()) return
+        // Кэшируем синтез под messageId, иначе кнопка play (loadAndPlay → getCachedAudioFile)
+        // его не найдёт после авто-проигрывания: TTS пишет в cacheDir/tts_local_*, а кнопка
+        // ищет в audio_messages/msg_<id>.mp3. ExoPlayer играет WAV по контенту (расширение неважно).
+        val cached = getCachedAudioFile(messageId)
+        if (audioFile.absolutePath != cached.absolutePath) {
+            try { audioFile.copyTo(cached, overwrite = true) } catch (e: Exception) {
+                Log.w(TAG, "cache copy failed: ${e.message}")
+            }
+        }
         // playFile() lazily creates the ExoPlayer itself; just replace current.
         stop()
-        playFile(messageId, audioFile)
+        playFile(messageId, if (cached.exists()) cached else audioFile)
     }
 
     /**
