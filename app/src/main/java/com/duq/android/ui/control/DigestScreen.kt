@@ -4,9 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
@@ -124,9 +122,10 @@ private fun DigestCard(item: DigestInbox.Item, expanded: Boolean, onTap: () -> U
                 modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
             if (item.text.isNotBlank()) {
                 if (expanded) {
+                    // Полный текст рендерится целиком; прокручивает родительский LazyColumn
+                    // (свой verticalScroll внутри item = бесконечная высота → краш).
                     SelectionContainer {
-                        Text(item.text, color = DuqColors.textSecondary, fontSize = 14.sp, lineHeight = 21.sp,
-                            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(max = 9000.dp))
+                        Text(item.text, color = DuqColors.textSecondary, fontSize = 14.sp, lineHeight = 21.sp)
                     }
                 } else {
                     Text(item.text, color = DuqColors.textSecondary, fontSize = 14.sp, lineHeight = 21.sp, maxLines = 4)
