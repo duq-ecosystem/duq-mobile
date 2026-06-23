@@ -114,6 +114,18 @@ private fun MainShell(
     val backStack by tabNav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: START_TAB
     var showPalette by remember { mutableStateOf(false) }
+    // Сброс фокуса поля чата + закрытие клавиатуры при смене вкладки — иначе IME и
+    // поле ввода чата «зависают» поверх Пульта (фокус держит их при навигации).
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    // Любой уход с вкладки чата (клик/жест/deep-link) гасит клавиатуру и фокус, чтобы
+    // поле ввода чата не висело поверх других экранов.
+    LaunchedEffect(current) {
+        if (current != "tab_chat") {
+            keyboardController?.hide()
+            focusManager.clearFocus(force = true)
+        }
+    }
 
     // Deep-link из уведомления (тап по пушу «обновление ядра» → раздел «Движок»).
     LaunchedEffect(DeepLinkState.pendingSection) {
@@ -149,6 +161,10 @@ private fun MainShell(
                     NavigationBarItem(
                         selected = current == tab.route,
                         onClick = {
+                            // Убираем фокус/клавиатуру ДО навигации, чтобы поле ввода
+                            // чата не повисло поверх Пульта.
+                            keyboardController?.hide()
+                            focusManager.clearFocus(force = true)
                             tabNav.navigate(tab.route) {
                                 popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
