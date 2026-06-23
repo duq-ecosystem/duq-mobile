@@ -234,14 +234,31 @@ class ConversationViewModel @Inject constructor(
         }
     }
 
-    /** Switch active agent — own isolated session: clear visible history, fresh chat. */
+    /** Переключиться на агента: грузим ЕГО диалоги (раздельные истории per agent) и
+     *  последнюю беседу. Нет бесед у агента → пустой чат (первое сообщение создаст). */
     fun switchAgent(agentId: String) {
         if (agentId == _activeAgentId.value) return
         _activeAgentId.value = agentId
         _messages.value = emptyList()
         _activeConversationId.value = null
-        pendingNewConversation = true
+        currentRunId = null
+        disarmReplyWatchdog(); _isProcessing.value = false
         _activeConversationTitle.value = _agents.value.firstOrNull { it.id == agentId }?.displayName ?: "DUQ"
+        viewModelScope.launch {
+            val list = runCatching { gatewayClient.listConversations(agentId) }.getOrElse { emptyList() }
+            if (_activeAgentId.value != agentId) return@launch
+            _conversations.value = list
+            val first = list.firstOrNull()
+            if (first == null) { pendingNewConversation = true; return@launch }
+            _activeConversationId.value = first.id
+            _activeConversationTitle.value = first.dateLabel
+            pendingNewConversation = false
+            val history = runCatching { gatewayClient.loadMessages(first.id) }.getOrElse { emptyList() }
+            if (_activeAgentId.value != agentId) return@launch
+            _messages.value = history.map {
+                Message(role = MessageRole.fromApiString(it.role), content = it.text)
+            }
+        }
     }
 
     init {
@@ -255,7 +272,8 @@ class ConversationViewModel @Inject constructor(
     /** Перечитать список бесед (для переключателя). Тихо игнорит сетевые ошибки. */
     fun loadConversations() {
         viewModelScope.launch {
-            val list = runCatching { gatewayClient.listConversations() }.getOrElse {
+            // Только диалоги активного агента (раздельные истории per agent).
+            val list = runCatching { gatewayClient.listConversations(_activeAgentId.value) }.getOrElse {
                 flog.w(TAG, "listConversations failed: ${it.message}"); return@launch
             }
             _conversations.value = list

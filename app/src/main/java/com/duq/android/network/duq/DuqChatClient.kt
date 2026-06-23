@@ -170,8 +170,8 @@ class DuqChatClient @Inject constructor(
      * Список диалогов пользователя (для переключателя бесед). Отсортирован ядром по
      * last_message_at DESC — первый элемент = самый свежий/активный. Пусто при ошибке.
      */
-    suspend fun listConversations(): List<DuqConversation> {
-        val convs = runCatching { rest.conversations() }.getOrElse {
+    suspend fun listConversations(agentId: String? = null): List<DuqConversation> {
+        val convs = runCatching { rest.conversations(agentId) }.getOrElse {
             logger.w(TAG, "conversations failed: ${it.message}"); return emptyList()
         }
         // dateLabel — человеческая русская дата (Сегодня/Вчера/«20 июня») для шапки.

@@ -117,8 +117,9 @@ class DuqRestClient @Inject constructor(
     }
 
     /** Список диалогов пользователя. */
-    suspend fun conversations(): List<ConversationDto> = withContext(Dispatchers.IO) {
-        val req = Request.Builder().url(url("conversations")).withServerAuth().withBearer().get().build()
+    suspend fun conversations(agentId: String? = null): List<ConversationDto> = withContext(Dispatchers.IO) {
+        val u = url("conversations") + (agentId?.let { "?agent_id=$it" } ?: "")
+        val req = Request.Builder().url(u).withServerAuth().withBearer().get().build()
         httpClient.newCall(req).execute().use { resp ->
             val raw = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) throw DuqApiException("conversations ${resp.code}")
