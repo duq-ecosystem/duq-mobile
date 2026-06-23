@@ -98,6 +98,28 @@ object AppConfig {
     const val WHISPER_MODEL_URL =
         "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin"
 
+    // ── On-device TTS (sherpa-onnx + Piper VITS RU) ──
+    // Переносим TTS с сервера (Silero v4 на VPS :8766) на устройство — симметрично STT:
+    // разгружает VPS, убирает сетевую латентность, голос синтезируется офлайн. Движок —
+    // sherpa-onnx (k2-fsa, Apache-2.0, готовый Android-AAR через JitPack); голос — Piper
+    // ru_RU-irina-medium (VITS, 22050 Hz). Silero-ONNX отвергнут: официального ONNX у Silero
+    // нет (мейнтейнер закрыл — внутренний нейро-акцентор put_accent), портировать на Kotlin
+    // неподъёмно. При TTS_ON_DEVICE=false ИЛИ ошибке синтеза — fallback на серверный TTS_URL.
+    const val TTS_ON_DEVICE = true
+    // Готовый sherpa-бандл (model.onnx + tokens.txt + espeak-ng-data) одним tar.bz2-архивом.
+    // Качается в filesDir при первом голосовом ответе (НЕ в APK — ~67MB) и распаковывается.
+    // URL — github release k2-fsa/sherpa-onnx (tag tts-models), стабильный.
+    const val TTS_MODEL_BUNDLE = "vits-piper-ru_RU-irina-medium"
+    const val TTS_MODEL_URL =
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/$TTS_MODEL_BUNDLE.tar.bz2"
+    // Пути внутри распакованного бандла (структура sherpa-onnx Piper-моделей).
+    const val TTS_MODEL_FILE = "$TTS_MODEL_BUNDLE/$TTS_MODEL_BUNDLE.onnx"
+    const val TTS_TOKENS_FILE = "$TTS_MODEL_BUNDLE/tokens.txt"
+    const val TTS_ESPEAK_DATA_DIR = "$TTS_MODEL_BUNDLE/espeak-ng-data"
+    const val TTS_SPEAKER_ID = 0          // irina — single-speaker
+    const val TTS_SPEED = 1.0f
+    const val TTS_SAMPLE_RATE = 22050     // выход VITS Piper medium
+
     // Wake word (0.0-1.0, higher = more sensitive, may cause false positives)
     const val WAKE_WORD_SENSITIVITY = 0.9f
     const val WAKE_WORD_FILENAME = "hey_duck.ppn"

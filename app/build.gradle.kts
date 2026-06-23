@@ -221,6 +221,13 @@ dependencies {
     // Audio playback
     implementation("androidx.media3:media3-exoplayer:1.2.1")
 
+    // On-device TTS: sherpa-onnx (k2-fsa, Apache-2.0) + Piper VITS RU. AAR через JitPack
+    // (com.github.k2-fsa:sherpa-onnx) — официальный канал распространения Android-биндинга.
+    implementation("com.github.k2-fsa:sherpa-onnx:1.13.3")
+    // Распаковка скачанного бандла модели (.tar.bz2). Apache Commons Compress (Apache-2.0) —
+    // индустриальный стандарт; берём ради BZip2 + Tar (Android SDK их не декодирует).
+    implementation("org.apache.commons:commons-compress:1.27.1")
+
     // DataStore for settings
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
