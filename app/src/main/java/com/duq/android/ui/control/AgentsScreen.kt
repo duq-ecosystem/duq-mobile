@@ -32,6 +32,7 @@ fun AgentsScreen(onBack: () -> Unit, vm: AgentsViewModel = hiltViewModel()) {
     val st by vm.state.collectAsState()
     LaunchedEffect(Unit) { vm.load() }
     var creating by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<AgentInfo?>(null) }
 
     Scaffold(
         containerColor = DuqColors.background,
@@ -68,26 +69,31 @@ fun AgentsScreen(onBack: () -> Unit, vm: AgentsViewModel = hiltViewModel()) {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(st.agents, key = { it.id }) { a ->
-                    AgentItem(a, onDelete = { vm.deleteAgent(a.id) })
+                    AgentItem(
+                        a,
+                        onEdit = { if (!a.isSystem) editing = a },
+                        onDelete = { vm.deleteAgent(a.id) },
+                    )
                 }
             }
         }
     }
 
-    if (creating) AgentSheet(
+    if (creating || editing != null) AgentSheet(
+        initial = editing,
         tools = st.tools,
-        onDismiss = { creating = false },
+        onDismiss = { creating = false; editing = null },
         onSave = { id, name, desc, tools ->
-            vm.createAgent(id, name, desc, tools)
-            creating = false
+            vm.createAgent(id, name, desc, tools)   // POST = upsert (создание И редактирование)
+            creating = false; editing = null
         }
     )
 }
 
 @Composable
-private fun AgentItem(a: AgentInfo, onDelete: () -> Unit) {
+private fun AgentItem(a: AgentInfo, onEdit: () -> Unit, onDelete: () -> Unit) {
     ElevatedCard(
-        Modifier.fillMaxWidth(),
+        Modifier.fillMaxWidth().clickable(onClick = onEdit),
         colors = CardDefaults.elevatedCardColors(containerColor = DuqColors.surfaceVariant)
     ) {
         ListItem(
@@ -123,15 +129,18 @@ private fun AgentItem(a: AgentInfo, onDelete: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AgentSheet(
+    initial: AgentInfo? = null,
     tools: List<String>,
     onDismiss: () -> Unit,
     onSave: (String, String, String, List<String>) -> Unit
 ) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var id by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
-    var desc by remember { mutableStateOf("") }
-    val picked = remember { mutableStateListOf<String>() }
+    val editMode = initial != null
+    var id by remember { mutableStateOf(initial?.id ?: "") }
+    var name by remember { mutableStateOf(initial?.displayName ?: "") }
+    var desc by remember { mutableStateOf(initial?.description ?: "") }
+    // Предзаполняем тулсет агента при редактировании (галочки на его тулах).
+    val picked = remember { mutableStateListOf<String>().apply { initial?.allowedTools?.let { addAll(it) } } }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = DuqColors.surfaceElevated) {
         Column(
@@ -139,8 +148,16 @@ private fun AgentSheet(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text("Новый агент", color = DuqColors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-            AutoField(id, { id = it.lowercase().filter { c -> c.isLetterOrDigit() || c == '-' } }, "id (латиница, напр. recruiter)")
+            Text(
+                if (editMode) "Редактировать агента" else "Новый агент",
+                color = DuqColors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold
+            )
+            // id — ключ агента, при редактировании не меняется (показываем как текст).
+            if (editMode) {
+                Text("id: ${initial!!.id}", color = DuqColors.textSecondary, fontSize = 13.sp)
+            } else {
+                AutoField(id, { id = it.lowercase().filter { c -> c.isLetterOrDigit() || c == '-' } }, "id (латиница, напр. recruiter)")
+            }
             AutoField(name, { name = it }, "Имя агента")
             AutoField(desc, { desc = it }, "Описание (зачем агент)")
 
