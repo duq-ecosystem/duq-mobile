@@ -426,9 +426,9 @@ class ConversationViewModel @Inject constructor(
                 // cleared — covers replies that stream deltas (pending was set),
                 // replies with no deltas (only lastInputWasVoice is set), and empty
                 // NO_REPLY turns (clear so the next typed reply isn't spoken).
-                // Озвучиваем если: модель РЕШИЛА (event.voice — set_response_mode voice,
-                // независимо от того, как пришёл ввод) ИЛИ ввод был голосовой (legacy-путь).
-                val speakThisReply = event.voice || event.runId == pendingVoiceReplyRunId || lastInputWasVoice
+                // Озвучка по РЕШЕНИЮ модели идёт через chat.message (handleIncomingMessage).
+                // Здесь — только legacy-путь «голосом спросил → голосом ответил».
+                val speakThisReply = event.runId == pendingVoiceReplyRunId || lastInputWasVoice
                 if (event.runId == pendingVoiceReplyRunId) pendingVoiceReplyRunId = null
                 lastInputWasVoice = false
 

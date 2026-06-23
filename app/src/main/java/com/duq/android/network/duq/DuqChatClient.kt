@@ -125,10 +125,7 @@ class DuqChatClient @Inject constructor(
                 val taskId = rest.sendMessage(text, conversationId, newConversation, agentId)
                 val answer = rest.awaitResponse(taskId)
                 _chatEvents.emit(
-                    OcChatEvent(
-                        runId = runId, state = "final",
-                        fullText = answer.response.orEmpty(), voice = answer.voice,
-                    )
+                    OcChatEvent(runId = runId, state = "final", fullText = answer)
                 )
             } catch (e: Exception) {
                 logger.e(TAG, "sendMessage failed: ${e.message}")

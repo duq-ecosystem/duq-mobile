@@ -68,10 +68,7 @@ data class TaskResult(
 /** Полезная нагрузка завершённой задачи. */
 data class TaskResponse(
     val response: String? = null,
-    val channel: String? = null,
-    // Модель решила озвучить этот ответ (set_response_mode "voice"). Клиент
-    // синтезирует TTS независимо от того, был ли ввод голосовым.
-    val voice: Boolean = false
+    val channel: String? = null
 )
 
 /** Один диалог из GET /duq/api/conversations (отсортированы по last_message_at DESC). */
@@ -113,8 +110,7 @@ data class OcChatEvent(
     val state: String,          // "delta" | "final" | "error" | "aborted"
     val deltaText: String? = null,
     val fullText: String? = null,
-    val errorMessage: String? = null,
-    val voice: Boolean = false  // модель решила озвучить ответ (set_response_mode voice)
+    val errorMessage: String? = null
 )
 
 /** Шаг агента (tool/command) внутри ответа — приходит live из ядра по reasoning-стриму
