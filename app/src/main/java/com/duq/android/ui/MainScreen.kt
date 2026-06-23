@@ -88,7 +88,6 @@ import com.duq.android.ui.theme.DuqColors
 fun MainScreen(
     onNavigateToSettings: () -> Unit,
     onOpenPalette: () -> Unit = {},
-    onOpenDigest: () -> Unit = {},
     viewModel: ConversationViewModel = hiltViewModel(),
     audioPlaybackManager: ChatAudioPlaybackManager
 ) {
@@ -104,13 +103,10 @@ fun MainScreen(
     val updateReadyVersion by viewModel.updateReadyVersion.collectAsState()
     val updateInstalling by viewModel.updateInstalling.collectAsState()
     val updateProgress by viewModel.updateProgress.collectAsState()
-    // 🔔 уведомления и 📰 дайджесты — РАЗНЫЕ сущности, разные хранилища.
-    val notifItems by viewModel.inboxItems.collectAsState()
-    val digestItems by viewModel.digestItems.collectAsState()
+    // Уведомления и дайджесты теперь в глобальной шторке (GlobalTopActions/NotificationsShade).
     val conversations by viewModel.conversations.collectAsState()
     val activeConversationId by viewModel.activeConversationId.collectAsState()
     val activeConversationTitle by viewModel.activeConversationTitle.collectAsState()
-    var showInbox by remember { mutableStateOf(false) }
     // Which inbox row is expanded to full text (null = all collapsed).
     var expandedItemId by remember { mutableStateOf<Long?>(null) }
 
@@ -272,71 +268,6 @@ fun MainScreen(
         }
     }
 
-    // Notification history bottom sheet (everything EXCEPT digests — those have
-    // their own 📰 feed below).
-    if (showInbox) {
-        ModalBottomSheet(
-            onDismissRequest = { showInbox = false },
-            containerColor = DuqColors.surface
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("История уведомлений", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = DuqColors.textPrimary)
-                    if (notifItems.isNotEmpty()) {
-                        Text(
-                            "Очистить", fontSize = 13.sp, color = DuqColors.primary,
-                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { viewModel.clearInbox() }.padding(6.dp)
-                        )
-                    }
-                }
-                if (notifItems.isEmpty()) {
-                    Text("Пока нет уведомлений", fontSize = 14.sp, color = DuqColors.textSecondary,
-                        modifier = Modifier.padding(vertical = 16.dp))
-                } else {
-                    androidx.compose.foundation.lazy.LazyColumn(
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 460.dp)
-                    ) {
-                        items(notifItems, key = { it.id }) { item ->
-                            val icon = when (item.type) {
-                                "update" -> "⬆"; "message" -> "💬"; else -> "🔔"
-                            }
-                            val isUpdate = item.type == "update"
-                            val expanded = expandedItemId == item.id
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        if (isUpdate) { viewModel.installUpdate(); showInbox = false }
-                                        else expandedItemId = if (expanded) null else item.id
-                                    }
-                                    .padding(8.dp)
-                            ) {
-                                Text("$icon  ${item.title}", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = DuqColors.textPrimary)
-                                if (item.text.isNotBlank()) {
-                                    Text(item.text, fontSize = 13.sp, color = DuqColors.textSecondary,
-                                        maxLines = if (expanded) Int.MAX_VALUE else 3,
-                                        modifier = Modifier.padding(top = 2.dp))
-                                }
-                                Text(formatInboxTime(item.timestampMs), fontSize = 11.sp, color = DuqColors.textDim,
-                                    modifier = Modifier.padding(top = 2.dp))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     // Переключатель диалогов — список бесед из /conversations + «Новый чат».
     // (Ядро одноагентное: переключаемся между беседами, а не агентами.)
@@ -496,49 +427,8 @@ fun MainScreen(
                 ) { Icon(Icons.Outlined.Search,
                     contentDescription = "\u041f\u043e\u0438\u0441\u043a", tint = DuqColors.textSecondary, modifier = Modifier.size(22.dp)) }
                 Spacer(modifier = Modifier.width(8.dp))
-                // Notification history (bell) with unread-style count badge
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(DuqColors.surfaceVariant)
-                        .clickable { viewModel.refreshInbox(); showInbox = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Outlined.NotificationsNone,
-                        contentDescription = "\u0423\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u044f", tint = DuqColors.textSecondary, modifier = Modifier.size(22.dp))
-                    if (notifItems.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(6.dp)
-                                .size(16.dp)
-                                .clip(CircleShape)
-                                .background(DuqColors.primary),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (notifItems.size > 9) "9+" else notifItems.size.toString(),
-                                fontSize = 9.sp, color = Color.Black, fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Settings button
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(DuqColors.surfaceVariant)
-                        .clickable { onNavigateToSettings() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Outlined.Settings,
-                        contentDescription = "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438", tint = DuqColors.textSecondary, modifier = Modifier.size(22.dp))
-                }
+                // \ud83d\udd14 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u044f + \u2699\ufe0f \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u2014 \u0433\u043b\u043e\u0431\u0430\u043b\u044c\u043d\u044b\u0439 \u0431\u043b\u043e\u043a (\u043d\u0430 \u0432\u0441\u0435\u0445 \u044d\u043a\u0440\u0430\u043d\u0430\u0445).
+                com.duq.android.ui.control.GlobalTopActions()
             }
         }
 

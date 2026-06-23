@@ -323,6 +323,7 @@ private fun AutoTopBar(title: String, onBack: () -> Unit) {
                 Icon(Icons.Outlined.ArrowBackIosNew, "Назад", tint = DuqColors.textPrimary, modifier = Modifier.size(20.dp))
             }
         },
+        actions = { GlobalTopActions() },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = DuqColors.background)
     )
 }

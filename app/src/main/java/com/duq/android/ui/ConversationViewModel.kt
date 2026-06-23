@@ -37,20 +37,13 @@ class ConversationViewModel @Inject constructor(
     private val audioRecorder: AudioRecorderInterface,
     private val ttsClient: com.duq.android.network.TtsClient,
     private val notificationInbox: com.duq.android.data.NotificationInbox,
-    private val digestInbox: com.duq.android.data.DigestInbox
 ) : ViewModel() {
 
-    /** In-app notification history (🔔) — digests are NOT here, see [digestItems]. */
+    /** Центр уведомлений (🔔) — единый, дайджесты тоже здесь (раздел в шторке). */
     val inboxItems = notificationInbox.items
 
     fun refreshInbox() = notificationInbox.refresh()
     fun clearInbox() = notificationInbox.clear()
-
-    /** Digest feed (📰) — a completely separate entity from notifications. */
-    val digestItems = digestInbox.items
-
-    fun refreshDigest() = digestInbox.refresh()
-    fun clearDigest() = digestInbox.clear()
 
     companion object {
         private const val TAG = "ConversationViewModel"
@@ -576,7 +569,7 @@ class ConversationViewModel @Inject constructor(
      * installUpdate() (banner/notification tap).
      */
     fun checkForUpdate() {
-        refreshInbox(); refreshDigest() // pick up items recorded while backgrounded
+        refreshInbox() // pick up items recorded while backgrounded
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val v = try { AppUpdater(context).checkAvailable() } catch (_: Exception) { 0 }
             _updateReadyVersion.value = if (v > 0) v else AppUpdater.availableVersion(context)

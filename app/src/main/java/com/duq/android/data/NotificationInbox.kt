@@ -11,49 +11,65 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * In-app notification history. Every notification DUQ raises (bot messages,
- * update prompts, etc.) is also recorded here so the user can browse past
- * notifications inside the app, not only in the system shade.
+ * In-app notification center. Всё, что DUQ присылает (сообщения, апдейты, система,
+ * И дайджесты), оседает здесь — единая шторка уведомлений на всех экранах.
  *
- * Backed by SharedPreferences (JSON) so it survives restarts and can be written
- * from non-Hilt call sites (AppUpdater) via [record].
+ * Непрочитанные: бейдж = число items новее, чем `lastOpened`. Висит, пока юзер не
+ * откроет шторку ([markOpened] → бейдж гаснет). Backed by SharedPreferences (JSON),
+ * переживает рестарт; пишется из non-Hilt мест (AppUpdater, PhoneCommandExecutor)
+ * через статический [record], который обновляет общий companion-flow → бейдж и список
+ * обновляются вживую без перезахода.
  */
 @Singleton
 class NotificationInbox @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    // @Keep: serialized with Gson via reflection. This class lives in
-    // com.duq.android.data (not data.model), so the package keep-rule doesn't cover
-    // it — without @Keep, R8 renames the fields in release and the inbox loads empty.
     @androidx.annotation.Keep
     data class Item(
         val id: Long,
         val title: String,
         val text: String,
         val timestampMs: Long,
-        val type: String // "message" | "update" | "system"
+        val type: String // "message" | "update" | "system" | "digest"
     )
 
-    private val _items = MutableStateFlow(load(context))
     val items: StateFlow<List<Item>> = _items.asStateFlow()
+    val unread: StateFlow<Int> = _unread.asStateFlow()
 
-    // refresh()/clear() and the static record() must share ONE monitor — an instance
-    // @Synchronized locks `this`, a companion @Synchronized locks the companion, so
-    // they wouldn't serialize against each other. Lock on the shared LOCK object.
-    fun refresh() = synchronized(LOCK) { _items.value = load(context) }
+    init {
+        _items.value = load(context)
+        _unread.value = computeUnread(context, _items.value)
+    }
+
+    fun refresh() = synchronized(LOCK) {
+        _items.value = load(context)
+        _unread.value = computeUnread(context, _items.value)
+    }
+
+    /** Юзер открыл шторку → всё прочитано, бейдж гаснет. */
+    fun markOpened() = synchronized(LOCK) {
+        prefs(context).edit().putLong(KEY_OPENED, System.currentTimeMillis()).commit()
+        _unread.value = 0
+    }
 
     fun clear() = synchronized(LOCK) {
-        prefs(context).edit().remove(KEY).commit() // commit: durable + ordered vs record()
+        prefs(context).edit().remove(KEY).commit()
         _items.value = emptyList()
+        _unread.value = 0
     }
 
     companion object {
         private const val PREFS = "duq_inbox"
         private const val KEY = "items"
+        private const val KEY_OPENED = "last_opened"
         private const val MAX = 100
         private val gson = Gson()
         private val LOCK = Any()
         private val seq = java.util.concurrent.atomic.AtomicLong(0)
+
+        // Общий источник правды для UI — и instance, и static record() пишут сюда.
+        private val _items = MutableStateFlow<List<Item>>(emptyList())
+        private val _unread = MutableStateFlow(0)
 
         private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -62,22 +78,25 @@ class NotificationInbox @Inject constructor(
             gson.fromJson(json, object : TypeToken<List<Item>>() {}.type) ?: emptyList()
         } catch (_: Exception) { emptyList() }
 
+        private fun computeUnread(c: Context, items: List<Item>): Int {
+            val opened = prefs(c).getLong(KEY_OPENED, 0L)
+            return items.count { it.timestampMs > opened }
+        }
+
         /**
-         * Append an item from ANY call site (Hilt or not). Newest first, capped.
-         * Safe to call from background threads.
+         * Append from ANY call site (Hilt or not). Newest first, capped. Обновляет
+         * общий flow + пересчитывает непрочитанные → бейдж растёт вживую.
          */
         fun record(context: Context, title: String, text: String, type: String, timestampMs: Long) =
             synchronized(LOCK) {
                 val current = load(context)
-                // id must be UNIQUE (it's the LazyColumn key) — two notifications in the
-                // same millisecond would collide on timestampMs and crash Compose with
-                // "duplicate keys". Pack a monotonic sequence into the low bits.
+                // id уникален (ключ LazyColumn) — два уведомления в одну мс иначе
+                // коллизятся по timestampMs и роняют Compose «duplicate keys».
                 val id = timestampMs * 1000 + (seq.getAndIncrement() % 1000)
-                val item = Item(id, title, text, timestampMs, type)
-                val updated = (listOf(item) + current).take(MAX)
-                val ok = prefs(context).edit().putString(KEY, gson.toJson(updated)).commit()
-                com.duq.android.logging.FileLogger(context).i("NotificationInbox",
-                    "record ok=$ok now=${updated.size} title=$title")
+                val updated = (listOf(Item(id, title, text, timestampMs, type)) + current).take(MAX)
+                prefs(context).edit().putString(KEY, gson.toJson(updated)).commit()
+                _items.value = updated
+                _unread.value = computeUnread(context, updated)
             }
     }
 }

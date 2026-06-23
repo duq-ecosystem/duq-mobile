@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Checklist
@@ -49,7 +48,6 @@ data class HubSection(val key: String, val icon: ImageVector, val title: String)
 val HUB_SECTIONS = listOf(
     HubSection("skills", Icons.Outlined.AutoAwesome, "Скиллы"),
     HubSection("schedule", Icons.Outlined.Schedule, "Расписание"),
-    HubSection("digest", Icons.AutoMirrored.Outlined.Article, "Дайджест"),
     HubSection("engine", Icons.Outlined.Tune, "Движок"),
 )
 
@@ -68,8 +66,11 @@ fun HubScreen(onOpenSection: (String) -> Unit, onOpenPalette: () -> Unit = {}) {
                 color = DuqColors.textDim,
                 letterSpacing = 3.sp
             )
-            Icon(Icons.Outlined.Search, contentDescription = "Поиск", tint = DuqColors.textSecondary,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpenPalette).padding(8.dp).size(22.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Search, contentDescription = "Поиск", tint = DuqColors.textSecondary,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpenPalette).padding(8.dp).size(22.dp))
+                com.duq.android.ui.control.GlobalTopActions()
+            }
         }
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),

@@ -35,7 +35,6 @@ fun SectionScreen(sectionKey: String, onBack: () -> Unit, vm: SectionViewModel =
     when (sectionKey) {
         "skills" -> SkillsScreen(onBack)
         "schedule" -> ScheduleScreen(onBack)
-        "digest" -> DigestScreen(onBack)
         else -> EngineScreen(vm, onBack)
     }
 }
@@ -69,6 +68,7 @@ private fun EngineScreen(vm: SectionViewModel, onBack: () -> Unit) {
                         tint = DuqColors.primary,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp))
                             .clickable { vm.loadCore() }.padding(horizontal = 14.dp, vertical = 8.dp).size(22.dp))
+                    GlobalTopActions()
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DuqColors.background),
                 windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0)

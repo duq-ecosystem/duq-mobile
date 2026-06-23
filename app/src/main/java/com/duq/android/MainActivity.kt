@@ -42,6 +42,8 @@ class MainActivity : FragmentActivity() {
         intent.getStringExtra("porcupine_key")?.let { settingsRepository.savePorcupineApiKey(it) }
         // Deep-link из уведомления: открыть раздел Пульта (напр. «engine» по пушу обновления).
         intent.getStringExtra("open_section")?.let { DeepLinkState.pendingSection = it }
+        if (intent.getStringExtra("open_notifications") == "digest")
+            com.duq.android.ui.control.AppChrome.openShade(1)
         enableEdgeToEdge()
         setContent {
             DuqAndroidTheme {
@@ -78,6 +80,8 @@ class MainActivity : FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         intent.getStringExtra("open_section")?.let { DeepLinkState.pendingSection = it }
+        if (intent.getStringExtra("open_notifications") == "digest")
+            com.duq.android.ui.control.AppChrome.openShade(1)
     }
 
     override fun onResume() {

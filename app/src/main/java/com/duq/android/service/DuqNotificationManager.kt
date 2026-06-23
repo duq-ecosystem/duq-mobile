@@ -55,15 +55,10 @@ class DuqNotificationManager @Inject constructor(
      * route it into a dedicated section (e.g. the 📰 Дайджест feed for "digest").
      */
     fun showMessageNotification(text: String, title: String = "DUQ", type: String = "message") {
-        // Digest is a SEPARATE entity from the notification history: a digest goes
-        // ONLY into the 📰 digest feed (DigestInbox), never into the 🔔 inbox. The
-        // standard system push below still fires for both (a digest still notifies).
+        // Всё (сообщения, апдейты, система, дайджесты) падает в ЕДИНЫЙ центр
+        // уведомлений (🔔 шторка). Дайджесты — раздел «Дайджесты» внутри той же шторки.
         val now = System.currentTimeMillis()
-        if (type == "digest") {
-            com.duq.android.data.DigestInbox.record(context, title, text, now)
-        } else {
-            com.duq.android.data.NotificationInbox.record(context, title, text, type, now)
-        }
+        com.duq.android.data.NotificationInbox.record(context, title, text, type, now)
         val id = msgCounter.getAndIncrement()
         val openIntent = PendingIntent.getActivity(
             context, id,
@@ -71,8 +66,8 @@ class DuqNotificationManager @Inject constructor(
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
                 // Пуш «обновление ядра доступно» → тап открывает раздел «Движок» (deep-link).
                 if (type == "core_update") putExtra("open_section", "engine")
-                // Пуш дайджеста → тап открывает раздел 📰 Дайджест (тот же deep-link, что и Движок).
-                if (type == "digest") putExtra("open_section", "digest")
+                // Пуш дайджеста → тап открывает шторку уведомлений на разделе «Дайджесты».
+                if (type == "digest") putExtra("open_notifications", "digest")
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )

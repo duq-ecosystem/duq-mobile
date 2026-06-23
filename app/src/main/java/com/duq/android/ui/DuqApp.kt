@@ -74,6 +74,11 @@ fun DuqApp() {
     // DuqApp would leave audio permanently dead. The process teardown frees ExoPlayer.
     LaunchedEffect(Unit) { audioPlaybackManager.initialize() }
 
+    // Глобальная ⚙️ (из верхней панели любого экрана) ведёт в Настройки.
+    LaunchedEffect(Unit) {
+        com.duq.android.ui.control.AppChrome.openSettings = { navController.navigate(Screen.Settings.route) }
+    }
+
     // Ядро DUQ авторизуется build-time edge-токеном (BuildConfig.SERVER_TOKEN) —
     // устройство НЕ пейрится (Ed25519/bootstrap-пейринг удалены).
     // Всегда стартуем с оболочки (чат).
@@ -90,6 +95,9 @@ fun DuqApp() {
             SettingsScreen(onBack = { navController.popBackStack() })
         }
     }
+
+    // Шторка центра уведомлений — глобальный оверлей поверх любого экрана.
+    com.duq.android.ui.control.NotificationsShade()
 }
 
 /**
@@ -171,7 +179,6 @@ private fun MainShell(
                 MainScreen(
                     onNavigateToSettings = onNavigateToSettings,
                     onOpenPalette = { showPalette = true },
-                    onOpenDigest = { tabNav.navigate("section/digest") },
                     audioPlaybackManager = audioPlaybackManager
                 )
             }
