@@ -113,7 +113,10 @@ object AppConfig {
     const val TTS_MODEL_URL =
         "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/$TTS_MODEL_BUNDLE.tar.bz2"
     // Пути внутри распакованного бандла (структура sherpa-onnx Piper-моделей).
-    const val TTS_MODEL_FILE = "$TTS_MODEL_BUNDLE/$TTS_MODEL_BUNDLE.onnx"
+    // Файл модели НЕ повторяет имя бандла: бандл "vits-piper-ru_RU-irina-medium",
+    // а .onnx внутри — "ru_RU-irina-medium.onnx" (без префикса vits-piper-). Неверное
+    // имя давало isModelReady=false → "model not ready after extract" → fallback на сервер.
+    const val TTS_MODEL_FILE = "$TTS_MODEL_BUNDLE/${TTS_MODEL_BUNDLE.removePrefix("vits-piper-")}.onnx"
     const val TTS_TOKENS_FILE = "$TTS_MODEL_BUNDLE/tokens.txt"
     const val TTS_ESPEAK_DATA_DIR = "$TTS_MODEL_BUNDLE/espeak-ng-data"
     const val TTS_SPEAKER_ID = 0          // irina — single-speaker

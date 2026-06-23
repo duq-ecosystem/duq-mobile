@@ -168,11 +168,7 @@ class ConversationViewModel @Inject constructor(
         // сообщает: усыновляем id и подтягиваем список, чтобы беседа была в переключателе.
         val active = _activeConversationId.value
         val convId = msg.conversationId
-        Log.i(TAG, "handleIncoming id=${msg.messageId.take(8)} role=${msg.role} voice=${msg.voice} conv=${convId?.take(8)} active=${active?.take(8)}")
-        if (active != null && convId != null && convId != active) {
-            Log.i(TAG, "handleIncoming SKIP: conv≠active")
-            return
-        }
+        if (active != null && convId != null && convId != active) return
         if (active == null && convId != null) {
             _activeConversationId.value = convId
             loadConversations()
