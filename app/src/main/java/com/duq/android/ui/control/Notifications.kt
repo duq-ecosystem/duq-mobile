@@ -162,8 +162,11 @@ private fun NotifList(items: List<NotificationInbox.Item>, vm: NotificationsView
             Column(
                 Modifier.fillMaxWidth().padding(vertical = 6.dp).clip(RoundedCornerShape(10.dp))
                     .clickable {
-                        if (item.type == "update") { vm.installUpdate(); AppChrome.showNotifications = false }
-                        else expandedId = if (expanded) null else item.id
+                        if (item.type == "update") {
+                            // Апдейт приложения → ведём в раздел «Версия» (там и установка).
+                            com.duq.android.ui.DeepLinkState.pendingSection = "version"
+                            AppChrome.showNotifications = false
+                        } else expandedId = if (expanded) null else item.id
                     }.padding(8.dp)
             ) {
                 Text("$icon  ${item.title}", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = DuqColors.textPrimary)

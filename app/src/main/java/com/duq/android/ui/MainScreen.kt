@@ -477,52 +477,8 @@ fun MainScreen(
                 // statusBarsPadding, иначе тройной отступ = чёрная зона сверху.
                 .padding(top = 60.dp)
         ) {
-            // In-app update banner — persists until installed, so a dismissed
-            // system dialog/notification can always be re-triggered here.
-            if (updateReadyVersion > 0) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DuqColors.surfaceElevated)
-                        // Don't re-trigger while a download is already running.
-                        .clickable(enabled = !updateInstalling) { viewModel.installUpdate() }
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = if (updateInstalling) "⬆ Скачиваю v$updateReadyVersion…"
-                                   else "⬆ Обновление v$updateReadyVersion готово",
-                            fontSize = 13.sp,
-                            color = DuqColors.textPrimary
-                        )
-                        Text(
-                            text = if (updateInstalling) "${(updateProgress * 100).toInt()}%" else "УСТАНОВИТЬ",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DuqColors.primary
-                        )
-                    }
-                    // Прогресс-бар скачивания APK (0..1).
-                    if (updateInstalling) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LinearProgressIndicator(
-                            progress = { updateProgress },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(2.dp)),
-                            color = DuqColors.primary,
-                            trackColor = DuqColors.surfaceVariant
-                        )
-                    }
-                }
-            }
+            // Апдейт приложения переехал в раздел Пульт → «Версия» (вместе с ядром).
+            // В чате баннера больше нет.
 
             // (Утка переехала на задний фон Box; push-to-talk теперь на кнопке справа
             // от поля ввода: тап = отправить текст, удержание = запись голоса.)

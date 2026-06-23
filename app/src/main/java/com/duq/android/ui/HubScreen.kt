@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SmartToy
+import androidx.compose.material.icons.outlined.SystemUpdateAlt
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -47,8 +48,8 @@ data class HubSection(val key: String, val icon: ImageVector, val title: String)
  *  через /core-update). Прежние gateway-RPC разделы убраны — у ядра DUQ нет RPC. */
 val HUB_SECTIONS = listOf(
     HubSection("skills", Icons.Outlined.AutoAwesome, "Скиллы"),
-    HubSection("schedule", Icons.Outlined.Schedule, "Расписание"),
-    HubSection("engine", Icons.Outlined.Tune, "Движок"),
+    HubSection("schedule", Icons.Outlined.Schedule, "Задачи"),
+    HubSection("version", Icons.Outlined.SystemUpdateAlt, "Версия"),
 )
 
 @Composable

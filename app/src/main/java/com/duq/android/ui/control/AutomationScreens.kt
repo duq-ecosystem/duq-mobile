@@ -137,7 +137,7 @@ fun ScheduleScreen(onBack: () -> Unit, vm: AutomationViewModel = hiltViewModel()
 
     Scaffold(
         containerColor = DuqColors.background,
-        topBar = { AutoTopBar("Расписание", onBack) },
+        topBar = { AutoTopBar("Задачи", onBack) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { editing = null; creating = true },

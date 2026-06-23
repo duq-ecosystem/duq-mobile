@@ -35,16 +35,17 @@ fun SectionScreen(sectionKey: String, onBack: () -> Unit, vm: SectionViewModel =
     when (sectionKey) {
         "skills" -> SkillsScreen(onBack)
         "schedule" -> ScheduleScreen(onBack)
-        else -> EngineScreen(vm, onBack)
+        else -> VersionScreen(vm, onBack)   // "version" (+ legacy "engine")
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EngineScreen(vm: SectionViewModel, onBack: () -> Unit) {
+private fun VersionScreen(vm: SectionViewModel, onBack: () -> Unit) {
     val core by vm.core.collectAsState()
-    LaunchedEffect(Unit) { vm.loadCore() }
-    // Пока апдейт идёт — авто-опрос статуса (живой прогресс + детект завершения).
+    val app by vm.app.collectAsState()
+    LaunchedEffect(Unit) { vm.loadCore(); vm.loadApp() }
+    // Пока апдейт ядра идёт — авто-опрос статуса (живой прогресс + детект завершения).
     val running = (core as? SectionViewModel.CoreState.Data)?.status?.running == true
     LaunchedEffect(running) {
         while (running) {
@@ -56,7 +57,7 @@ private fun EngineScreen(vm: SectionViewModel, onBack: () -> Unit) {
         containerColor = DuqColors.background,
         topBar = {
             TopAppBar(
-                title = { Text("Движок", color = DuqColors.textPrimary) },
+                title = { Text("Версия", color = DuqColors.textPrimary) },
                 navigationIcon = {
                     Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Назад",
                         tint = DuqColors.textPrimary,
@@ -67,7 +68,7 @@ private fun EngineScreen(vm: SectionViewModel, onBack: () -> Unit) {
                     Icon(Icons.Outlined.Refresh, contentDescription = "Обновить",
                         tint = DuqColors.primary,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                            .clickable { vm.loadCore() }.padding(horizontal = 14.dp, vertical = 8.dp).size(22.dp))
+                            .clickable { vm.loadCore(); vm.loadApp() }.padding(horizontal = 14.dp, vertical = 8.dp).size(22.dp))
                     GlobalTopActions()
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DuqColors.background),
@@ -75,21 +76,42 @@ private fun EngineScreen(vm: SectionViewModel, onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when (val s = core) {
-                is SectionViewModel.CoreState.Loading ->
-                    CircularProgressIndicator(color = DuqColors.primary, modifier = Modifier.align(Alignment.Center))
-                is SectionViewModel.CoreState.Error ->
-                    Text("⚠️ ${s.message}", color = DuqColors.textMuted, textAlign = TextAlign.Center,
-                        modifier = Modifier.align(Alignment.Center).padding(32.dp))
-                is SectionViewModel.CoreState.Data ->
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(vertical = 12.dp)
-                    ) { item { EngineCard(s.status, vm) } }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(vertical = 12.dp)
+        ) {
+            item { AppCard(app, vm) }
+            item {
+                when (val s = core) {
+                    is SectionViewModel.CoreState.Loading ->
+                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = DuqColors.primary, modifier = Modifier.size(22.dp))
+                        }
+                    is SectionViewModel.CoreState.Error ->
+                        Text("⚠️ ядро: ${s.message}", color = DuqColors.textMuted, fontSize = 12.sp,
+                            modifier = Modifier.padding(8.dp))
+                    is SectionViewModel.CoreState.Data -> EngineCard(s.status, vm)
+                }
             }
         }
+    }
+}
+
+@Composable private fun AppCard(st: SectionViewModel.AppState, vm: SectionViewModel) = Card {
+    Text("📱 Приложение", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DuqColors.textPrimary)
+    Text("текущая: ${st.currentName}", fontSize = 12.sp, color = DuqColors.textSecondary, modifier = Modifier.padding(top = 4.dp))
+    if (st.updateAvailable)
+        Text("доступна: v${st.remoteCode}", fontSize = 12.sp, color = DuqColors.primary, modifier = Modifier.padding(top = 2.dp))
+    Spacer(Modifier.height(10.dp))
+    when {
+        st.installing -> Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(color = DuqColors.primary, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Скачиваю… ${(st.progress * 100).toInt()}%", fontSize = 13.sp, color = DuqColors.textSecondary)
+        }
+        st.updateAvailable -> ActionChip("Обновить приложение", DuqColors.primary) { vm.installApp() }
+        else -> Text("✓ Установлена последняя версия", fontSize = 13.sp, color = DuqColors.success)
     }
 }
 

@@ -65,7 +65,7 @@ class DuqNotificationManager @Inject constructor(
             Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
                 // Пуш «обновление ядра доступно» → тап открывает раздел «Движок» (deep-link).
-                if (type == "core_update") putExtra("open_section", "engine")
+                if (type == "core_update") putExtra("open_section", "version")
                 // Пуш дайджеста → тап открывает шторку уведомлений на разделе «Дайджесты».
                 if (type == "digest") putExtra("open_notifications", "digest")
             },

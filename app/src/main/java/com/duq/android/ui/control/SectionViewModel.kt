@@ -3,10 +3,13 @@ package com.duq.android.ui.control
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.duq.android.BuildConfig
 import com.duq.android.network.CoreUpdateClient
+import com.duq.android.update.AppUpdater
 import com.duq.android.update.CoreUpdateNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,6 +63,44 @@ class SectionViewModel @Inject constructor(
             val res = coreUpdate.run()
             loadCore()
             onResult(res)
+        }
+    }
+
+    // ── Обновление ПРИЛОЖЕНИЯ (APK через AppUpdater) — рядом с обновлением ядра ──
+    data class AppState(
+        val currentName: String = BuildConfig.VERSION_NAME,
+        val currentCode: Int = BuildConfig.VERSION_CODE,
+        val remoteCode: Int = 0,       // >0 и > current ⇒ доступно обновление
+        val installing: Boolean = false,
+        val progress: Float = 0f,
+    ) { val updateAvailable get() = remoteCode > currentCode }
+
+    private val _app = MutableStateFlow(AppState())
+    val app: StateFlow<AppState> = _app.asStateFlow()
+
+    /** Проверить доступную версию приложения (GitHub Releases через AppUpdater). */
+    fun loadApp() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val remote = runCatching { AppUpdater(appContext).checkAvailable() }.getOrDefault(0)
+            _app.value = _app.value.copy(remoteCode = remote)
+        }
+    }
+
+    @Volatile private var appInstalling = false
+    /** Скачать и установить APK (PackageInstaller подтвердит). */
+    fun installApp() {
+        if (appInstalling) return
+        appInstalling = true
+        _app.value = _app.value.copy(installing = true, progress = 0f)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                AppUpdater(appContext).downloadAndInstall(onProgress = { p ->
+                    _app.value = _app.value.copy(progress = p)
+                })
+            } finally {
+                appInstalling = false
+                _app.value = _app.value.copy(installing = false, progress = 0f)
+            }
         }
     }
 }
