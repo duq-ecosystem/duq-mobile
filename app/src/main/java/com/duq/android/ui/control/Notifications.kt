@@ -192,7 +192,9 @@ private fun DigestList(items: List<NotificationInbox.Item>) {
                     .background(DuqColors.surfaceVariant)
                     .clickable { expandedId = if (expanded) null else item.id }.padding(12.dp)
             ) {
-                Text("📰  ${item.title}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DuqColors.textPrimary)
+                // Не дублируем 📰: скилл уже кладёт её в title. Префиксим только если нет.
+                val digestTitle = if (item.title.trimStart().startsWith("📰")) item.title else "📰  ${item.title}"
+                Text(digestTitle, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DuqColors.textPrimary)
                 Text(fmtNotifTime(item.timestampMs), fontSize = 11.sp, color = DuqColors.textDim,
                     modifier = Modifier.padding(top = 2.dp, bottom = 6.dp))
                 if (item.text.isNotBlank()) {

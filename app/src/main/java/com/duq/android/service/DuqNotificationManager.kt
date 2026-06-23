@@ -60,27 +60,53 @@ class DuqNotificationManager @Inject constructor(
         val now = System.currentTimeMillis()
         com.duq.android.data.NotificationInbox.record(context, title, text, type, now)
         val id = msgCounter.getAndIncrement()
-        val openIntent = PendingIntent.getActivity(
-            context, id,
-            Intent(context, MainActivity::class.java).apply {
-                // NEW_TASK обязателен: из убитого состояния тап по пушу без него не
-                // доставляет extra (deep-link терялся) — как в AppUpdater-пуше.
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                // Пуш «обновление ядра доступно» → тап открывает раздел «Версия» (deep-link).
-                if (type == "core_update") putExtra("open_section", "version")
-                // Пуш дайджеста → тап открывает шторку уведомлений на разделе «Дайджесты».
-                if (type == "digest") putExtra("open_notifications", "digest")
-            },
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        // ⚠️ Своя группа + summary НА КАЖДЫЙ ТИП. Иначе Android при 4+ пушах клеит свой
+        // AUTOGROUP_SUMMARY с ДЕФОЛТНЫМ intent — и тап по свёрнутой группе открывал чат,
+        // а не нужный раздел (дайджест/версия): deep-link терялся. Наш summary несёт тот
+        // же deep-link, поэтому тап и по свёрнутой группе, и по элементу ведёт куда надо.
+        val group = "duq_group_$type"
         val notification = NotificationCompat.Builder(context, DuqApplication.MESSAGES_CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text.take(200))
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentIntent(openIntent)
+            .setContentIntent(deepLinkIntent(type, id))
+            .setGroup(group)
             .setAutoCancel(true)
             .build()
         nm.notify(id, notification)
+        // Группо-summary со стабильным id — тап по свёрнутой группе уходит на наш deep-link.
+        val summary = NotificationCompat.Builder(context, DuqApplication.MESSAGES_CHANNEL_ID)
+            .setContentTitle(summaryTitle(type))
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(deepLinkIntent(type, group.hashCode()))
+            .setGroup(group)
+            .setGroupSummary(true)
+            .setAutoCancel(true)
+            .setSilent(true)
+            .build()
+        nm.notify(group.hashCode(), summary)
+    }
+
+    /** Deep-link по типу пуша: дайджест → раздел «Дайджесты», апдейт ядра → «Версия». */
+    private fun deepLinkIntent(type: String, requestCode: Int): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            // NEW_TASK обязателен: из убитого состояния тап без него не доставляет extra.
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            when (type) {
+                "core_update" -> putExtra("open_section", "version")
+                "digest" -> putExtra("open_notifications", "digest")
+            }
+        }
+        return PendingIntent.getActivity(
+            context, requestCode, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+    }
+
+    private fun summaryTitle(type: String): String = when (type) {
+        "digest" -> "📰 Дайджесты"
+        "core_update" -> "Обновление ядра"
+        else -> "DUQ"
     }
 }
