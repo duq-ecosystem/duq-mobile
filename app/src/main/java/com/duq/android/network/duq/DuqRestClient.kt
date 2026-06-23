@@ -197,9 +197,11 @@ class DuqRestClient @Inject constructor(
         }
     }
 
-    suspend fun createCronTask(name: String, cron: String, skill: String, timezone: String) =
+    suspend fun createCronTask(
+        name: String, cron: String, skill: String, timezone: String, agentId: String = "main"
+    ) =
         withContext(Dispatchers.IO) {
-            val body = gson.toJson(CronCreateBody(name, cron, skill, timezone)).toRequestBody(JSON)
+            val body = gson.toJson(CronCreateBody(name, cron, skill, timezone, agentId)).toRequestBody(JSON)
             val req = Request.Builder().url(url("scheduler/tasks")).withServerAuth().post(body).build()
             httpClient.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful)
@@ -257,9 +259,16 @@ data class CronTaskDto(
     val timezone: String?,
     val next_run: String?,
     val skill: String?,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    @com.google.gson.annotations.SerializedName("agent_id") val agent_id: String = "main"
 )
 data class CronTaskListDto(val tasks: List<CronTaskDto>?, val total: Int?)
-data class CronCreateBody(val name: String, val cron: String, val skill: String, val timezone: String)
+data class CronCreateBody(
+    val name: String,
+    val cron: String,
+    val skill: String,
+    val timezone: String,
+    @com.google.gson.annotations.SerializedName("agent_id") val agentId: String = "main",
+)
 data class CronEnabledBody(val enabled: Boolean)
 data class CronPatchBody(val cron: String?, val skill: String?, val name: String?)

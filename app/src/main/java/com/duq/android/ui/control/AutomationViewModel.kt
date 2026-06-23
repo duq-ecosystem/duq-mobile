@@ -2,6 +2,7 @@ package com.duq.android.ui.control
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.duq.android.network.duq.AgentInfo
 import com.duq.android.network.duq.CronTaskDto
 import com.duq.android.network.duq.DuqRestClient
 import com.duq.android.network.duq.SkillDto
@@ -26,6 +27,8 @@ class AutomationViewModel @Inject constructor(
     data class UiState(
         val skills: List<SkillDto> = emptyList(),
         val tasks: List<CronTaskDto> = emptyList(),
+        // Агенты для выбора исполнителя крон-джобы (из реестра ядра /api/agents).
+        val agents: List<AgentInfo> = emptyList(),
         val loading: Boolean = false,
         val busy: Boolean = false,
         val error: String? = null,
@@ -41,9 +44,10 @@ class AutomationViewModel @Inject constructor(
         runCatching {
             val skills = rest.listSkills()
             val tasks = rest.listCronTasks()
-            skills to tasks
-        }.onSuccess { (skills, tasks) ->
-            _state.update { it.copy(skills = skills, tasks = tasks, loading = false) }
+            val agents = runCatching { rest.listAgents() }.getOrDefault(emptyList())
+            Triple(skills, tasks, agents)
+        }.onSuccess { (skills, tasks, agents) ->
+            _state.update { it.copy(skills = skills, tasks = tasks, agents = agents, loading = false) }
         }.onFailure { e ->
             _state.update { it.copy(loading = false, error = e.message ?: "Ошибка загрузки") }
         }
@@ -65,8 +69,8 @@ class AutomationViewModel @Inject constructor(
     fun editSkill(name: String, content: String, description: String?) =
         mutate { rest.updateSkill(name, content = content.trim(), description = description?.trim()) }
 
-    fun createTask(name: String, cron: String, skill: String) =
-        mutate { rest.createCronTask(name.trim(), cron.trim(), skill, tz) }
+    fun createTask(name: String, cron: String, skill: String, agentId: String = "main") =
+        mutate { rest.createCronTask(name.trim(), cron.trim(), skill, tz, agentId) }
 
     fun editTask(taskId: String, name: String, cron: String, skill: String) =
         mutate { rest.updateCronTask(taskId, cron = cron.trim(), skill = skill, name = name.trim()) }

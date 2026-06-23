@@ -167,9 +167,10 @@ fun ScheduleScreen(onBack: () -> Unit, vm: AutomationViewModel = hiltViewModel()
     if (creating || editing != null) CronSheet(
         initial = editing,
         skills = st.skills.map { it.name },
+        agents = st.agents,
         onDismiss = { creating = false; editing = null },
-        onSave = { n, cron, skill ->
-            if (editing == null) vm.createTask(n, cron, skill)
+        onSave = { n, cron, skill, agentId ->
+            if (editing == null) vm.createTask(n, cron, skill, agentId)
             else vm.editTask(editing!!.task_id, n, cron, skill)
             creating = false; editing = null
         }
@@ -211,7 +212,8 @@ private val WEEKDAYS = listOf("Пн" to 1, "Вт" to 2, "Ср" to 3, "Чт" to 4
 @Composable
 private fun CronSheet(
     initial: CronTaskDto?, skills: List<String>,
-    onDismiss: () -> Unit, onSave: (String, String, String) -> Unit
+    agents: List<com.duq.android.network.duq.AgentInfo>,
+    onDismiss: () -> Unit, onSave: (String, String, String, String) -> Unit
 ) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val editMode = initial != null
@@ -219,6 +221,9 @@ private fun CronSheet(
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var skill by remember { mutableStateOf(initial?.skill ?: skills.firstOrNull() ?: "") }
     var menu by remember { mutableStateOf(false) }
+    // Агент-исполнитель крон-джобы (дефолт main). Выбор — dropdown ниже.
+    var agentId by remember { mutableStateOf(initial?.agent_id ?: "main") }
+    var agentMenu by remember { mutableStateOf(false) }
     val time = rememberTimePickerState(initialHour = parsed.first, initialMinute = parsed.second, is24Hour = true)
     val days = remember { mutableStateListOf<Int>().apply { addAll(parsed.third) } }
 
@@ -281,8 +286,30 @@ private fun CronSheet(
                     }
                 }
             }
+
+            // Выбор агента-исполнителя (его тулсет/память). Дефолт — main.
+            if (agents.isNotEmpty()) {
+                val agentLabel = agents.firstOrNull { it.id == agentId }?.displayName ?: agentId
+                ExposedDropdownMenuBox(expanded = agentMenu, onExpandedChange = { agentMenu = it }) {
+                    OutlinedTextField(
+                        value = agentLabel, onValueChange = {}, readOnly = true,
+                        label = { Text("Агент-исполнитель") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = agentMenu) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        colors = autoFieldColors()
+                    )
+                    ExposedDropdownMenu(expanded = agentMenu, onDismissRequest = { agentMenu = false }) {
+                        agents.forEach { a ->
+                            DropdownMenuItem(
+                                text = { Text(a.displayName) },
+                                onClick = { agentId = a.id; agentMenu = false }
+                            )
+                        }
+                    }
+                }
+            }
             Button(
-                onClick = { if (name.isNotBlank() && skill.isNotBlank()) onSave(name, cron, skill) },
+                onClick = { if (name.isNotBlank() && skill.isNotBlank()) onSave(name, cron, skill, agentId) },
                 enabled = name.isNotBlank() && skill.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = DuqColors.primary, contentColor = DuqColors.background),
                 modifier = Modifier.fillMaxWidth()
