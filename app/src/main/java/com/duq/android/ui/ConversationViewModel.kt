@@ -35,6 +35,7 @@ class ConversationViewModel @Inject constructor(
     private val gatewayClient: DuqChatClient,
     private val audioPlaybackManager: ChatAudioPlaybackManager,
     private val audioRecorder: AudioRecorderInterface,
+    private val ttsLocal: com.duq.android.audio.TtsLocal,
     private val ttsClient: com.duq.android.network.TtsClient,
     private val notificationInbox: com.duq.android.data.NotificationInbox,
 ) : ViewModel() {
@@ -548,7 +549,8 @@ class ConversationViewModel @Inject constructor(
         if (text.isBlank()) return
         viewModelScope.launch {
             val audio = try {
-                ttsClient.synthesize(text, messageId)
+                // On-device синтез (sherpa-onnx + Piper); null → fallback на серверный /tts.
+                ttsLocal.trySynthesize(text, messageId) ?: ttsClient.synthesize(text, messageId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
