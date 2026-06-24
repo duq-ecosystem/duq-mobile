@@ -299,8 +299,7 @@
 					"$(inherited)",
 					"-framework",
 					Shared,
-					"-U",
-					"_OBJC_CLASS_$_UIViewLayoutRegion",
+					"-Wl,-U,_OBJC_CLASS_$_UIViewLayoutRegion",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.duq.ios;
 				PRODUCT_NAME = iosApp;
@@ -331,8 +330,7 @@
 					"$(inherited)",
 					"-framework",
 					Shared,
-					"-U",
-					"_OBJC_CLASS_$_UIViewLayoutRegion",
+					"-Wl,-U,_OBJC_CLASS_$_UIViewLayoutRegion",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.duq.ios;
 				PRODUCT_NAME = iosApp;
