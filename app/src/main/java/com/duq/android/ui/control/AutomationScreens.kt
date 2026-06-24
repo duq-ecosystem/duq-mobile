@@ -171,7 +171,7 @@ fun ScheduleScreen(onBack: () -> Unit, vm: AutomationViewModel = hiltViewModel()
         onDismiss = { creating = false; editing = null },
         onSave = { n, cron, skill, agentId ->
             if (editing == null) vm.createTask(n, cron, skill, agentId)
-            else vm.editTask(editing!!.task_id, n, cron, skill)
+            else vm.editTask(editing!!.task_id, n, cron, skill, agentId)
             creating = false; editing = null
         }
     )

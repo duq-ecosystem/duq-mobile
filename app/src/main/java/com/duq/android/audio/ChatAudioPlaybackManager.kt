@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -387,22 +386,6 @@ class ChatAudioPlaybackManager @Inject constructor(
     fun clearCache() {
         audioCacheDir.listFiles()?.forEach { it.delete() }
         Log.d(TAG, "Audio cache cleared")
-    }
-
-    /**
-     * Save audio data to cache (e.g., from WebSocket message)
-     * Returns true if successfully saved
-     */
-    fun saveToCache(messageId: String, audioData: ByteArray): Boolean {
-        return try {
-            val cachedFile = getCachedAudioFile(messageId)
-            FileOutputStream(cachedFile).use { it.write(audioData) }
-            Log.d(TAG, "✅ Cached WebSocket audio for message $messageId (${audioData.size} bytes)")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to cache audio: ${e.message}", e)
-            false
-        }
     }
 
     /**

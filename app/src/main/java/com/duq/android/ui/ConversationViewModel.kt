@@ -652,11 +652,16 @@ class ConversationViewModel @Inject constructor(
         _messages.update { list -> list.map { if (it.id == messageId) it.copy(isAudioLoading = loading) else it } }
     }
 
+    private var speakJob: Job? = null
+
     private fun speakReply(messageId: String, text: String) {
         if (text.isBlank()) return
         if (!spokenMsgIds.add(messageId)) return
         Log.i(TAG, "speakReply start id=${messageId.take(8)} len=${text.length}")
-        viewModelScope.launch {
+        // Отменяем незавершённый предыдущий синтез: при быстрых ответах подряд
+        // (cron-проактив + живой) иначе параллельно синтезируются и накладываются.
+        speakJob?.cancel()
+        speakJob = viewModelScope.launch {
             val audio = try {
                 // On-device синтез (sherpa-onnx + Piper); null → fallback на серверный /tts.
                 val onDevice = ttsLocal.trySynthesize(text, messageId)

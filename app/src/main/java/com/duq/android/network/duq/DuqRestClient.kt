@@ -258,9 +258,10 @@ class DuqRestClient @Inject constructor(
 
     /** Правка крон-задачи: любое подмножество полей (Gson опускает null). */
     suspend fun updateCronTask(
-        taskId: String, cron: String? = null, skill: String? = null, name: String? = null
+        taskId: String, cron: String? = null, skill: String? = null, name: String? = null,
+        agentId: String? = null,
     ) = withContext(Dispatchers.IO) {
-        val body = gson.toJson(CronPatchBody(cron, skill, name)).toRequestBody(JSON)
+        val body = gson.toJson(CronPatchBody(cron, skill, name, agentId)).toRequestBody(JSON)
         val req = Request.Builder().url(url("scheduler/tasks/$taskId")).withServerAuth().patch(body).build()
         httpClient.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) throw DuqApiException("updateCron ${resp.code}: ${resp.body?.string()?.take(200)}")
@@ -312,4 +313,9 @@ data class AgentCreateBody(
     @com.google.gson.annotations.SerializedName("allowed_tools") val allowedTools: List<String>?,
 )
 data class CronEnabledBody(val enabled: Boolean)
-data class CronPatchBody(val cron: String?, val skill: String?, val name: String?)
+data class CronPatchBody(
+    val cron: String?,
+    val skill: String?,
+    val name: String?,
+    @com.google.gson.annotations.SerializedName("agent_id") val agentId: String? = null,
+)

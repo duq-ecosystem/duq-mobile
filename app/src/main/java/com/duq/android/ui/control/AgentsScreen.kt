@@ -136,11 +136,14 @@ private fun AgentSheet(
 ) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val editMode = initial != null
-    var id by remember { mutableStateOf(initial?.id ?: "") }
-    var name by remember { mutableStateOf(initial?.displayName ?: "") }
-    var desc by remember { mutableStateOf(initial?.description ?: "") }
+    // key = initial?.id: при смене редактируемого агента (или create↔edit) форма
+    // пересоздаёт state, иначе показывала бы значения от прошлого открытия.
+    val key = initial?.id
+    var id by remember(key) { mutableStateOf(initial?.id ?: "") }
+    var name by remember(key) { mutableStateOf(initial?.displayName ?: "") }
+    var desc by remember(key) { mutableStateOf(initial?.description ?: "") }
     // Предзаполняем тулсет агента при редактировании (галочки на его тулах).
-    val picked = remember { mutableStateListOf<String>().apply { initial?.allowedTools?.let { addAll(it) } } }
+    val picked = remember(key) { mutableStateListOf<String>().apply { initial?.allowedTools?.let { addAll(it) } } }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = DuqColors.surfaceElevated) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 28.dp)) {
