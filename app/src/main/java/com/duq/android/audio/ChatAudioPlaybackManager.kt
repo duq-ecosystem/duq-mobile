@@ -167,8 +167,22 @@ class ChatAudioPlaybackManager @Inject constructor(
         mainHandler.post {
             if (isReleased) return@post
             if (streamingMsgId != messageId) { // новая стрим-сессия
-                stopInternal()
+                stopInternal() // снимает прошлый listener, чистит очередь
                 streamingMsgId = messageId
+                // Listener ставим ОДИН раз на сессию (не на каждый сегмент) — иначе гонка
+                // remove/add вокруг setMediaItem может потерять или продублировать STATE_ENDED.
+                val player = exoPlayer ?: ExoPlayer.Builder(context).build().also { exoPlayer = it }
+                val listener = object : Player.Listener {
+                    override fun onPlaybackStateChanged(state: Int) {
+                        if (state == Player.STATE_ENDED) playNextSegment()
+                    }
+                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                        Log.e(TAG, "segment playback error: ${error.message}")
+                        playNextSegment() // не застреваем — следующий сегмент
+                    }
+                }
+                currentListener = listener
+                player.addListener(listener)
                 _playbackInfo.value = PlaybackInfo(messageId = messageId, state = PlaybackState.PLAYING)
             }
             segmentQueue.addLast(audioFile)
@@ -176,10 +190,9 @@ class ChatAudioPlaybackManager @Inject constructor(
         }
     }
 
-    /** Проиграть следующий сегмент из очереди (main thread). */
+    /** Проиграть следующий сегмент из очереди (main thread). Listener сессии уже стоит. */
     private fun playNextSegment() {
         if (isReleased) return
-        val msgId = streamingMsgId
         val file = segmentQueue.removeFirstOrNull() ?: run {
             playingSegment = false
             // Очередь пуста: стрим завершён → сброс; иначе ждём следующий сегмент.
@@ -187,24 +200,12 @@ class ChatAudioPlaybackManager @Inject constructor(
             return
         }
         playingSegment = true
+        val player = exoPlayer ?: run { playingSegment = false; return }
         try {
-            val player = exoPlayer ?: ExoPlayer.Builder(context).build().also { exoPlayer = it }
-            currentListener?.let { player.removeListener(it) }
-            val listener = object : Player.Listener {
-                override fun onPlaybackStateChanged(state: Int) {
-                    if (state == Player.STATE_ENDED) playNextSegment()
-                }
-                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                    Log.e(TAG, "segment playback error: ${error.message}")
-                    playNextSegment() // не застреваем — следующий сегмент
-                }
-            }
-            currentListener = listener
-            player.addListener(listener)
+            player.clearMediaItems() // прошлый item (его STATE_ENDED уже обработан) → IDLE
             player.setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
             player.prepare()
             player.play()
-            _playbackInfo.value = PlaybackInfo(messageId = msgId, state = PlaybackState.PLAYING)
         } catch (e: Exception) {
             Log.e(TAG, "playNextSegment failed: ${e.message}")
             playingSegment = false
@@ -372,6 +373,8 @@ class ChatAudioPlaybackManager @Inject constructor(
         streamingMsgId = null
         segmentQueue.clear()
         playingSegment = false
+        currentListener?.let { l -> exoPlayer?.removeListener(l) }
+        currentListener = null
         exoPlayer?.stop()
         exoPlayer?.clearMediaItems()
         _playbackInfo.value = PlaybackInfo()

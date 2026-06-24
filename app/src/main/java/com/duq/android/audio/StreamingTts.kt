@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,10 +32,13 @@ class StreamingTts @Inject constructor(
     private val playback: ChatAudioPlaybackManager,
     private val logger: Logger,
 ) {
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    // scope на Main: ВСЕ поля (channel/job/segIdx/activeRunId) и сегментер трогаются только
+    // из Main (VM-вызовы + consumer на Main) → без гонок. Сам синтез тяжёлый уходит в IO
+    // внутри ttsLocal.trySynthesize / ttsClient.synthesize (suspend с withContext(IO)),
+    // поэтому Main не блокируется (consumer на нём только ждёт).
+    private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private val segmenter = SentenceStreamer()
 
-    @Volatile
     private var activeRunId: String? = null
     private var channel: Channel<String>? = null
     private var job: Job? = null
@@ -83,13 +87,20 @@ class StreamingTts @Inject constructor(
         channel = null
     }
 
-    /** Прервать догон (новый тёрн/abort/error): стоп синтеза и озвучки. */
+    /** Прервать догон (новый тёрн/abort/error): стоп синтеза и озвучки.
+     *  Канал НЕ закрываем — отменяем job (consumer прервётся CancellationException,
+     *  finishStream НЕ вызовется, в отличие от штатного [finish]). */
     fun cancel() {
         activeRunId = null
-        channel?.close()
         channel = null
         job?.cancel()
         job = null
+        playback.cancelStream()
+    }
+
+    /** Освободить scope (вызывать из того же места, что и ChatAudioPlaybackManager.release). */
+    fun release() {
+        scope.cancel()
         playback.cancelStream()
     }
 

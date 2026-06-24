@@ -195,8 +195,10 @@ class ConversationViewModel @Inject constructor(
             }
         }
         // Озвучка решения модели — ДО дедупа пузыря: даже если пузырь-дубликат (история/
-        // REST), голос озвучить нужно (spokenMsgIds защитит от повторного синтеза).
-        if (msg.voice && role == MessageRole.ASSISTANT) speakReply(msg.messageId, msg.content)
+        // REST), голос озвучить нужно (spokenMsgIds/spokenContents защитят от повтора).
+        // clean() — чтобы (а) markdown не озвучивался символами, (б) дедуп по spokenContents
+        // совпал с тем, что положил инкрементальный догон (он кладёт cleaned-вариант).
+        if (msg.voice && role == MessageRole.ASSISTANT) speakReply(msg.messageId, ReplyText.clean(msg.content))
         if (isRecentDuplicate(role, msg.content)) {
             // Пузырь уже отрисован стримом (TEXT_DONE финализировал) — этот chat.message
             // несёт СЕРВЕРНЫЙ id + has_audio. Реконсилим: пузырь усыновляет серверный id
