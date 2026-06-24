@@ -628,6 +628,16 @@ class ConversationViewModel @Inject constructor(
     // доставки решения модели) не синтезировали один ответ дважды.
     private val spokenMsgIds = java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
+    // Дедуп ПО КОНТЕНТУ: один физический ответ приходит двумя путями (REST-final с runId
+    // и WS-push с серверным messageId) — РАЗНЫЕ id, spokenMsgIds их не свяжет → двойной
+    // синтез. Общий у обоих только текст. Bounded-LRU недавних озвученных текстов ловит
+    // гонку push↔final, не мешая повторно озвучить тот же текст в другом тёрне позже.
+    private val spokenContents = java.util.Collections.synchronizedMap(
+        object : LinkedHashMap<String, Boolean>(16, 0.75f, false) {
+            override fun removeEldestEntry(eldest: Map.Entry<String, Boolean>) = size > 16
+        }
+    )
+
     /**
      * Тап по кнопке play на сообщении. Если озвучка ещё в кэше плеера — просто
      * play/pause. Если кэш стёрт (рестарт/OS почистил cacheDir/перезагрузка истории) —
@@ -669,6 +679,8 @@ class ConversationViewModel @Inject constructor(
     private fun speakReply(messageId: String, text: String) {
         if (text.isBlank()) return
         if (!spokenMsgIds.add(messageId)) return
+        // Гонка push↔final: тот же ответ под другим id уже озвучивается → не дублируем синтез.
+        if (spokenContents.put(text.trim(), true) != null) return
         Log.i(TAG, "speakReply start id=${messageId.take(8)} len=${text.length}")
         // Отменяем незавершённый предыдущий синтез: при быстрых ответах подряд
         // (cron-проактив + живой) иначе параллельно синтезируются и накладываются.
