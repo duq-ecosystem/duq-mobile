@@ -39,6 +39,7 @@ fun MessagesList(
     messages: List<Message>,
     audioPlaybackInfo: PlaybackInfo = PlaybackInfo(),
     onAudioPlayPauseClick: (String) -> Unit = {},
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
     modifier: Modifier = Modifier
 ) {
     // Reverse the messages so newest is first (for reverseLayout)
@@ -106,7 +107,8 @@ fun MessagesList(
                         audioPlaybackState = audioState,
                         audioProgress = progress,
                         audioDurationMs = durationMs,
-                        onAudioPlayPauseClick = { onAudioPlayPauseClick(message.id) }
+                        onAudioPlayPauseClick = { onAudioPlayPauseClick(message.id) },
+                        hazeState = hazeState
                     )
                 }
             }

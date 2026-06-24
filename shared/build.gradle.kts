@@ -56,7 +56,10 @@ kotlin {
             implementation(libs.jetbrains.lifecycle.viewmodel.compose)
             implementation(libs.jetbrains.lifecycle.runtime.compose)
             implementation(libs.jetbrains.navigation.compose)
-            // NOTE: haze (блюр) — на фазе экранов.
+            // koinViewModel<...>() в экранах (фаза экранов) — мультиплатформенный мост Koin↔ViewModel.
+            implementation(libs.koin.compose.viewmodel)
+            // haze (frosted-glass блюр) — multiplatform 1.6; пузыри чата размывают утку-watermark.
+            implementation(libs.haze)
         }
 
         androidMain.dependencies {

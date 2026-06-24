@@ -31,6 +31,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontStyle
 import com.duq.android.ui.theme.DuqColors
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -45,9 +47,10 @@ import kotlinx.datetime.toLocalDateTime
  * - Streaming text support for AI responses
  * - Audio playback controls for voice messages
  *
- * NB: frosted-glass blur (haze) убран на этой фазе — `dev.chrisbanes.haze` ещё не
- * подключён в shared. Пузырь рисует обычный градиентный фон (ветка else исходника).
- * Блюр вернётся на фазе экранов вместе с haze-зависимостью.
+ * Frosted-glass blur (haze 1.6, multiplatform): если передан [hazeState] (источник =
+ * утка-watermark на заднем фоне чата), пузырь размывает утку под собой через
+ * `hazeEffect` + полупрозрачный tint для читаемости. Без hazeState — обычный
+ * градиентный фон (ветка else, напр. вне MessagesList).
  */
 @Composable
 fun MessageBubble(
@@ -57,7 +60,8 @@ fun MessageBubble(
     audioPlaybackState: AudioPlaybackState = AudioPlaybackState.IDLE,
     audioProgress: Float = 0f,
     audioDurationMs: Int? = null,   // живая длительность из PlaybackInfo (msg.audioDurationMs не заполняется)
-    onAudioPlayPauseClick: () -> Unit = {}
+    onAudioPlayPauseClick: () -> Unit = {},
+    hazeState: HazeState? = null
 ) {
     val isUser = message.role == MessageRole.USER
     val alignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
@@ -160,7 +164,16 @@ fun MessageBubble(
                         else Modifier
                     )
                     .clip(bubbleShape)
-                    .background(backgroundBrush)
+                    // Frosted glass: hazeEffect размывает утку с заднего фона под
+                    // пузырём, сверху — полупрозрачный tint для читаемости текста.
+                    .then(
+                        if (hazeState != null)
+                            Modifier
+                                .hazeEffect(state = hazeState)
+                                .background(DuqColors.surface.copy(alpha = 0.42f))
+                        else
+                            Modifier.background(backgroundBrush)
+                    )
                     .border(
                         width = 1.dp,
                         brush = borderBrush,
