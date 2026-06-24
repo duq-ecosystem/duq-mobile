@@ -38,6 +38,7 @@ kotlin {
             // Serialization / coroutines
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)  // dateLabel бесед (мультиплатформенно, вместо java.time)
             // DI (Koin) — выверенная версия 4.1.1
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
@@ -64,7 +65,8 @@ kotlin {
             implementation(libs.sherpa.onnx)
             implementation(libs.silero.vad)
             implementation(libs.commons.compress)
-            implementation(libs.okhttp)   // WhisperLocal/TtsLocal: докачка моделей (DoH-резолвер подключится с network-слоем)
+            implementation(libs.okhttp)   // WhisperLocal/TtsLocal: докачка моделей + DoH-резолвер для Ktor OkHttp-движка
+            implementation(libs.okhttp.dnsoverhttps)  // DoH fallback (обход «Unable to resolve host») в OkHttp-движке Ktor
             // NOTE: camerax, play-location, work, security — на фазе platform (location/camera/updater).
         }
 

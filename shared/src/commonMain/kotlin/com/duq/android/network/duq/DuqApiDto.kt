@@ -6,6 +6,10 @@ import kotlinx.serialization.Serializable
 /** Ошибка вызова REST-API ядра DUQ. */
 class DuqApiException(message: String) : Exception(message)
 
+/** Ответ серверного STT (/stt, faster-whisper за nginx) — текст распознавания. */
+@Serializable
+data class SttResponse(val text: String? = null)
+
 // ───────── Скиллы (md-промпты) — /duq/api/skills ─────────
 
 @Serializable
