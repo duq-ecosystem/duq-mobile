@@ -168,7 +168,7 @@ class StreamingTts @Inject constructor(
         val minBuf = AudioTrack.getMinBufferSize(
             sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
-        val bufBytes = maxOf(minBuf, sampleRate * 2) // ~1с буфер (sampleRate сэмплов × 2 байта)
+        val bufBytes = maxOf(minBuf, sampleRate * 4) // ~2с буфер (sampleRate×2сэмпла × 2 байта) — запас от джиттера, чтобы не было прерываний
         return AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
