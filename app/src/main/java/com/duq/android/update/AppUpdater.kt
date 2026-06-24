@@ -56,13 +56,15 @@ class AppUpdater(private val context: Context, private val notificationsEnabled:
     // Force HTTP/1.1: OkHttp's HTTP/2 stream can stall indefinitely on large
     // bodies behind some nginx setups (flow-control window never opens), and the
     // per-read timeout never fires because no bytes arrive — the download hangs
-    // forever. callTimeout is a hard ceiling on the whole request as a backstop.
+    // forever. readTimeout (per-read, 60s) ловит реальный столл. callTimeout — потолок
+    // на ВСЮ загрузку: 51MB на медленной сети (≥283 КБ/с при 180с) таймаутил, хотя байты
+    // шли; поднят до 600с (≥85 КБ/с) — медленный момент сети больше не рвёт штатный апдейт.
     private val client = OkHttpClient.Builder()
         .withDuqDns()
         .protocols(listOf(Protocol.HTTP_1_1))
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
-        .callTimeout(180, TimeUnit.SECONDS)
+        .callTimeout(600, TimeUnit.SECONDS)
         .build()
 
     private val nm = context.getSystemService(NotificationManager::class.java)
