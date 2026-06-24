@@ -249,7 +249,10 @@ class ConversationViewModel @Inject constructor(
         disarmReplyWatchdog(); _isProcessing.value = false
         _activeConversationTitle.value = _agents.value.firstOrNull { it.id == agentId }?.displayName ?: "DUQ"
         viewModelScope.launch {
-            val list = runCatching { gatewayClient.listConversations(agentId) }.getOrElse { emptyList() }
+            val list = runCatching { gatewayClient.listConversations(agentId) }.getOrElse {
+                flog.w(TAG, "switchAgent($agentId) listConversations failed: ${it.message}")
+                emptyList()
+            }
             if (_activeAgentId.value != agentId) return@launch
             _conversations.value = list
             val first = list.firstOrNull()
@@ -257,7 +260,10 @@ class ConversationViewModel @Inject constructor(
             _activeConversationId.value = first.id
             _activeConversationTitle.value = first.dateLabel
             pendingNewConversation = false
-            val history = runCatching { gatewayClient.loadMessages(first.id) }.getOrElse { emptyList() }
+            val history = runCatching { gatewayClient.loadMessages(first.id) }.getOrElse {
+                flog.w(TAG, "switchAgent($agentId) loadMessages failed: ${it.message}")
+                emptyList()
+            }
             if (_activeAgentId.value != agentId) return@launch
             _messages.value = history.map { it.toMessage() }
         }

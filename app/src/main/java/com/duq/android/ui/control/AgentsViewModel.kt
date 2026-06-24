@@ -1,5 +1,6 @@
 package com.duq.android.ui.control
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duq.android.network.duq.AgentInfo
@@ -37,7 +38,9 @@ class AgentsViewModel @Inject constructor(
         _state.update { it.copy(loading = true, error = null) }
         runCatching {
             val agents = rest.listAgents()
-            val tools = runCatching { rest.listTools() }.getOrDefault(emptyList())
+            val tools = runCatching { rest.listTools() }
+                .onFailure { Log.w("AgentsViewModel", "listTools failed: ${it.message}") }
+                .getOrDefault(emptyList())
             agents to tools
         }.onSuccess { (agents, tools) ->
             _state.update { it.copy(agents = agents, tools = tools, loading = false) }
