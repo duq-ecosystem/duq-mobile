@@ -24,7 +24,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            // Compose Multiplatform UI
+            // Compose Multiplatform UI (версии управляет compose-mp плагин — надёжно)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -32,55 +32,23 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
-            // ViewModel + navigation (multiplatform)
-            implementation(libs.jetbrains.lifecycle.viewmodel)
-            implementation(libs.jetbrains.lifecycle.viewmodel.compose)
-            implementation(libs.jetbrains.lifecycle.runtime.compose)
-            implementation(libs.jetbrains.navigation.compose)
-            // DI
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-            // Network
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.serialization.json)
-            implementation(libs.ktor.client.websockets)
-            implementation(libs.ktor.client.logging)
-            // Serialization / coroutines
+            // Serialization / coroutines (нужны уже для DTO-слоя)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
-            // Storage
-            implementation(libs.multiplatform.settings)
-            implementation(libs.multiplatform.settings.coroutines)
-            // Frosted-glass blur (iOS works out of the box via Skia)
-            implementation(libs.haze)
+            // NOTE: navigation/lifecycle/koin/ktor/multiplatform-settings/haze добавляются
+            // на своих фазах (UI/DI/сеть/storage) с выверенными версиями + проверкой CI.
         }
 
         androidMain.dependencies {
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.activity.compose)
             implementation(libs.kotlinx.coroutines.android)
-            implementation(libs.koin.android)
-            // Ktor engine (Android) + DoH support lives here
-            implementation(libs.ktor.client.okhttp)
-            // Audio playback / on-device voice
-            implementation(libs.androidx.media3.exoplayer)
-            implementation(libs.sherpa.onnx)
-            implementation(libs.silero.vad)
-            implementation(libs.commons.compress)
-            // Camera / location / phone-control (Android-only actuals)
-            implementation(libs.androidx.camera.camera2)
-            implementation(libs.androidx.camera.lifecycle)
-            implementation(libs.androidx.camera.view)
-            implementation(libs.play.services.location)
-            // Background self-update
-            implementation(libs.androidx.work.runtime)
-            implementation(libs.androidx.security.crypto)
+            // NOTE: koin-android, ktor-okhttp, media3, sherpa-onnx, silero-vad, camerax,
+            // play-location, work, security — добавляются на фазах сети/DI/audio/platform.
         }
 
         iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
+            // NOTE: ktor-darwin добавляется на фазе сети.
         }
     }
 }

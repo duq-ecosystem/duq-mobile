@@ -78,5 +78,5 @@ dependencies {
     implementation(compose.runtime)
     implementation(compose.ui)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.koin.android)
+    // koin-android добавляется на фазе DI (init Koin в DuqApplication).
 }
