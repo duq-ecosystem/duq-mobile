@@ -51,7 +51,12 @@ kotlin {
             // Storage (multiplatform-settings 1.2.0) — KMP-хранилище настроек
             implementation(libs.multiplatform.settings)
             implementation(libs.multiplatform.settings.coroutines)
-            // NOTE: navigation/lifecycle/haze — на фазах UI.
+            // ViewModel + navigation (multiplatform, выверено по офиц. KMP doc)
+            implementation(libs.jetbrains.lifecycle.viewmodel)
+            implementation(libs.jetbrains.lifecycle.viewmodel.compose)
+            implementation(libs.jetbrains.lifecycle.runtime.compose)
+            implementation(libs.jetbrains.navigation.compose)
+            // NOTE: haze (блюр) — на фазе экранов.
         }
 
         androidMain.dependencies {

@@ -9,8 +9,8 @@ ksp = "2.3.20-2.0.4"
 # AndroidX / Compose-MP companion libs (JetBrains multiplatform forks)
 androidx-activityCompose = "1.9.3"
 androidx-core = "1.13.1"
-lifecycle = "2.9.0"            # org.jetbrains.androidx.lifecycle (multiplatform)
-navigation = "2.9.0-alpha18"  # org.jetbrains.androidx.navigation (multiplatform)
+lifecycle = "2.9.4"           # org.jetbrains.androidx.lifecycle (multiplatform, стабильная 2.9.x)
+navigation = "2.9.2"          # org.jetbrains.androidx.navigation (офиц. KMP doc для CMP 1.11)
 
 # DI
 koin = "4.1.1"
