@@ -182,9 +182,9 @@ inline `ToolStepsBlock`, баннер обновления, TTS, инбокс/д
 ## 7. Экран Лента (Activity)
 
 Единый монитор «здесь и сейчас», autorefresh:
-- **Аппрувы (HITL, верх):** `exec.approval.list` + `plugin.approval.list` →
-  карточки «разрешить/отклонить» (`exec.approval.resolve`,
-  `plugin.approval.resolve`); ожидание `exec.approval.waitDecision`.
+- **Аппрувы (HITL, верх):** `exec.approval.list` →
+  карточки «разрешить/отклонить» (`exec.approval.resolve`);
+  ожидание `exec.approval.waitDecision`.
 - **Cron:** последние/идущие прогоны (`cron.runs`, `cron.status`).
 - **Задачи:** активные (`tasks.list`).
 - **Расходы:** сводка за сегодня (`usage.cost`).
