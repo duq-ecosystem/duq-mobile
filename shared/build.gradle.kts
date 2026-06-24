@@ -18,7 +18,10 @@ kotlin {
     listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Shared"
-            isStatic = true
+            // Динамический: фреймворк сам несёт системные зависимости Compose (UIKit/Metal/…),
+            // статический давал «Undefined symbols arm64» на xcodebuild archive (их надо было
+            // вручную линковать). Динамик экспортирует символы → archive/.ipa собирается.
+            isStatic = false
         }
     }
 
