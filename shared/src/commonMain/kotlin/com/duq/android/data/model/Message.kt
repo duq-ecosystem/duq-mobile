@@ -1,9 +1,8 @@
 package com.duq.android.data.model
 
+import com.duq.android.util.nowMillis
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 
 enum class MessageRole {
     USER, ASSISTANT;
@@ -18,9 +17,7 @@ enum class MessageRole {
 
 /**
  * Один tool-вызов агента в ответе — рендерится в пузыре сворачиваемым блоком «tool use».
- * Ключ [callId] = toolCallId (не raw item id): ядро шлёт до двух item-событий на вызов
- * (kind:"tool" + kind:"command"/"patch") с одним toolCallId; группировка по callId
- * схлопывает пару в один шаг. [done] → true на phase:"end".
+ * Ключ [callId] = toolCallId; [done] → true на phase:"end".
  */
 data class MessageStep(
     val callId: String,
@@ -43,7 +40,9 @@ data class Message(
     val isStreaming: Boolean = false,
     val steps: List<MessageStep> = emptyList(),
     val voicePhase: VoicePhase? = null,
-    val createdAt: Instant = Clock.System.now()
+    // Unix epoch millis — канонический порядок сообщений (kotlinx-datetime убран:
+    // Clock.System не резолвился под Kotlin 2.3.20 на iOS klib).
+    val createdAt: Long = nowMillis()
 )
 
 /**

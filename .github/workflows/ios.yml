@@ -26,18 +26,48 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    # Этап 1: компиляция shared под iOS (Kotlin/Native) — линковка release-фреймворка.
-    # Доказывает, что весь общий код собирается под arm64 iPhone.
-    - name: Link iOS framework (arm64)
-      run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --no-daemon --build-cache
+    # Сборка unsigned .ipa. Xcode-проект через Run Script Build Phase зовёт
+    # `./gradlew :shared:embedAndSignAppleFrameworkForXcode` — Gradle сам соберёт
+    # статический фреймворк Shared под iosArm64/Release и положит его в
+    # shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME) (= FRAMEWORK_SEARCH_PATHS).
+    # Отдельный linkReleaseFramework-шаг не нужен — archive делает то же самое.
+    - name: Archive iosApp (unsigned)
+      run: |
+        xcodebuild \
+          -project iosApp/iosApp.xcodeproj \
+          -scheme iosApp \
+          -configuration Release \
+          -sdk iphoneos \
+          -destination 'generic/platform=iOS' \
+          -archivePath "$PWD/build/iosApp.xcarchive" \
+          archive \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGN_ENTITLEMENTS="" \
+          DEVELOPMENT_TEAM=""
 
-    # Этап 2 (добавляется с Xcode-проектом, фаза iOS): xcodebuild archive
-    # CODE_SIGNING_ALLOWED=NO → unsigned .ipa в артефакты (SideStore подпишет на телефоне).
+    # Упаковка unsigned .ipa: Payload/iosApp.app → zip. SideStore/AltStore подпишет на телефоне.
+    - name: Package unsigned .ipa
+      run: |
+        APP_PATH="build/iosApp.xcarchive/Products/Applications/iosApp.app"
+        if [ ! -d "$APP_PATH" ]; then
+          echo "::error::Не найден $APP_PATH — archive не собрал .app"
+          ls -R build/iosApp.xcarchive/Products || true
+          exit 1
+        fi
+        rm -rf Payload iosApp.ipa
+        mkdir -p Payload
+        cp -R "$APP_PATH" Payload/
+        zip -r iosApp.ipa Payload >/dev/null
+        echo "Собран unsigned .ipa:"
+        ls -lh iosApp.ipa
 
-    - name: Upload iOS framework artifact
+    - name: Upload iOS .ipa artifact
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: shared-ios-framework
-        path: shared/build/bin/iosArm64/releaseFramework/
+        name: iosApp-unsigned-ipa
+        path: iosApp.ipa
         retention-days: 7
+        if-no-files-found: warn
