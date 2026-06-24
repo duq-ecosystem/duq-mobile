@@ -31,9 +31,10 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
-            // Serialization / coroutines
+            // Serialization / coroutines / datetime
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)
             // DI (Koin) — выверенная версия 4.1.1
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
