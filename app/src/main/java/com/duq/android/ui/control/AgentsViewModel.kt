@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duq.android.network.duq.AgentInfo
 import com.duq.android.network.duq.DuqRestClient
+import com.duq.android.network.duq.ToolCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +26,7 @@ class AgentsViewModel @Inject constructor(
 
     data class UiState(
         val agents: List<AgentInfo> = emptyList(),
-        val tools: List<String> = emptyList(),
+        val toolCategories: List<ToolCategory> = emptyList(),
         val loading: Boolean = false,
         val busy: Boolean = false,
         val error: String? = null,
@@ -38,12 +39,12 @@ class AgentsViewModel @Inject constructor(
         _state.update { it.copy(loading = true, error = null) }
         runCatching {
             val agents = rest.listAgents()
-            val tools = runCatching { rest.listTools() }
-                .onFailure { Log.w("AgentsViewModel", "listTools failed: ${it.message}") }
+            val cats = runCatching { rest.listToolCategories() }
+                .onFailure { Log.w("AgentsViewModel", "listToolCategories failed: ${it.message}") }
                 .getOrDefault(emptyList())
-            agents to tools
-        }.onSuccess { (agents, tools) ->
-            _state.update { it.copy(agents = agents, tools = tools, loading = false) }
+            agents to cats
+        }.onSuccess { (agents, cats) ->
+            _state.update { it.copy(agents = agents, toolCategories = cats, loading = false) }
         }.onFailure { e ->
             _state.update { it.copy(loading = false, error = e.message ?: "Ошибка загрузки") }
         }

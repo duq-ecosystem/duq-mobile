@@ -11,6 +11,10 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.ui.state.ToggleableState
+import com.duq.android.network.duq.ToolCategory
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,7 +86,7 @@ fun AgentsScreen(onBack: () -> Unit, vm: AgentsViewModel = hiltViewModel()) {
 
     if (creating || editing != null) AgentSheet(
         initial = editing,
-        tools = st.tools,
+        toolCategories = st.toolCategories,
         onDismiss = { creating = false; editing = null },
         onSave = { id, name, desc, tools ->
             vm.createAgent(id, name, desc, tools)   // POST = upsert (создание И редактирование)
@@ -137,7 +141,7 @@ private fun AgentItem(a: AgentInfo, onEdit: () -> Unit, onDelete: () -> Unit) {
 @Composable
 private fun AgentSheet(
     initial: AgentInfo? = null,
-    tools: List<String>,
+    toolCategories: List<ToolCategory>,
     onDismiss: () -> Unit,
     onSave: (String, String, String, List<String>) -> Unit
 ) {
@@ -179,7 +183,7 @@ private fun AgentSheet(
                     else "Тулсет агента (${picked.size} выбрано):",
                     color = DuqColors.textSecondary, fontSize = 13.sp
                 )
-                FlowRowTools(tools, picked)
+                CategorizedTools(toolCategories, picked)
             }
             Spacer(Modifier.height(12.dp))
             Button(
@@ -192,21 +196,72 @@ private fun AgentSheet(
     }
 }
 
+/**
+ * Тулсет по категориям: секции свёрнуты по умолчанию (тулов много — плоский список
+ * нечитаем). У каждой категории — чекбокс вкл/выкл ВСЕЙ категории (трёхпозиционный:
+ * все/часть/никого) + разворот в конкретные тулы (чипы). Picked — плоский список имён
+ * (контракт onSave не меняется: ядру уходит список тулов, не категорий).
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FlowRowTools(tools: List<String>, picked: androidx.compose.runtime.snapshots.SnapshotStateList<String>) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        tools.forEach { t ->
-            val on = t in picked
-            FilterChip(
-                selected = on,
-                onClick = { if (on) picked.remove(t) else picked.add(t) },
-                label = { Text(t, fontSize = 12.sp) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = DuqColors.primary,
-                    selectedLabelColor = DuqColors.background
+private fun CategorizedTools(
+    categories: List<ToolCategory>,
+    picked: androidx.compose.runtime.snapshots.SnapshotStateList<String>
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        categories.forEach { cat ->
+            var expanded by remember(cat.name) { mutableStateOf(false) }
+            val selectedInCat = cat.tools.count { it in picked }
+            val allOn = selectedInCat == cat.tools.size && cat.tools.isNotEmpty()
+            val someOn = selectedInCat > 0 && !allOn
+
+            Row(
+                Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TriStateCheckbox(
+                    state = when {
+                        allOn -> ToggleableState.On
+                        someOn -> ToggleableState.Indeterminate
+                        else -> ToggleableState.Off
+                    },
+                    onClick = {
+                        // вкл всю категорию если не все выбраны, иначе выкл всю
+                        if (allOn) cat.tools.forEach { picked.remove(it) }
+                        else cat.tools.forEach { if (it !in picked) picked.add(it) }
+                    },
+                    colors = CheckboxDefaults.colors(checkedColor = DuqColors.primary)
                 )
-            )
+                Text(
+                    "${cat.name}  ($selectedInCat/${cat.tools.size})",
+                    color = DuqColors.textPrimary, fontSize = 13.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    contentDescription = if (expanded) "Свернуть" else "Развернуть",
+                    tint = DuqColors.textSecondary
+                )
+            }
+            if (expanded) {
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(start = 12.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    cat.tools.forEach { t ->
+                        val on = t in picked
+                        FilterChip(
+                            selected = on,
+                            onClick = { if (on) picked.remove(t) else picked.add(t) },
+                            label = { Text(t, fontSize = 12.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = DuqColors.primary,
+                                selectedLabelColor = DuqColors.background
+                            )
+                        )
+                    }
+                }
+            }
         }
     }
 }

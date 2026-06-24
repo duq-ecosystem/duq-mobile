@@ -139,12 +139,13 @@ class DuqRestClient @Inject constructor(
     }
 
     /** Доступные тулы (имена) — для назначения тулсета агенту в панели. */
-    suspend fun listTools(): List<String> = withContext(Dispatchers.IO) {
+    /** Тулы, сгруппированные ядром по категориям — для свёрнутого тулсета агента. */
+    suspend fun listToolCategories(): List<ToolCategory> = withContext(Dispatchers.IO) {
         val req = Request.Builder().url(url("tools")).withServerAuth().get().build()
         httpClient.newCall(req).execute().use { resp ->
             val raw = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) throw DuqApiException("tools ${resp.code}")
-            gson.fromJson(raw, ToolsResponse::class.java)?.tools ?: emptyList()
+            gson.fromJson(raw, ToolsResponse::class.java)?.categories ?: emptyList()
         }
     }
 
@@ -304,7 +305,11 @@ data class CronCreateBody(
     @com.google.gson.annotations.SerializedName("agent_id") val agentId: String = "main",
 )
 
-data class ToolsResponse(val tools: List<String> = emptyList())
+data class ToolCategory(val name: String = "", val tools: List<String> = emptyList())
+data class ToolsResponse(
+    val tools: List<String> = emptyList(),
+    val categories: List<ToolCategory> = emptyList(),
+)
 
 data class AgentCreateBody(
     val id: String,
