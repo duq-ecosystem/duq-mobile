@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -116,8 +117,14 @@ private fun AgentItem(a: AgentInfo, onEdit: () -> Unit, onDelete: () -> Unit) {
             },
             trailingContent = {
                 if (!a.isSystem) {
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Outlined.Delete, "Удалить", tint = DuqColors.accent)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Карандаш — явный сигнал, что по тапу карточка редактируется.
+                        IconButton(onClick = onEdit) {
+                            Icon(Icons.Outlined.Edit, "Редактировать", tint = DuqColors.textSecondary)
+                        }
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Outlined.Delete, "Удалить", tint = DuqColors.accent)
+                        }
                     }
                 }
             },
