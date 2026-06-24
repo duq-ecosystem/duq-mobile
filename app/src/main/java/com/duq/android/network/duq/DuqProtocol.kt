@@ -96,7 +96,8 @@ data class OcChatEvent(
     val state: String,          // "delta" | "final" | "error" | "aborted"
     val deltaText: String? = null,
     val fullText: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val voice: Boolean = false  // ядро сигналит что ответ озвучивается → app догоняет TTS по фразам
 )
 
 /** Шаг агента (tool/command) внутри ответа — приходит live из ядра по reasoning-стриму

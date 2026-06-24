@@ -467,14 +467,6 @@ class ConversationViewModel @Inject constructor(
                         else msgs + Message(id = event.runId, role = MessageRole.ASSISTANT, content = "", isStreaming = true)
                     }
                     _isProcessing.value = true
-                    // Bind this reply to the voice turn that triggered it, so only
-                    // it gets spoken (contextual TTS). Typed turns leave it null.
-                    if (lastInputWasVoice) {
-                        pendingVoiceReplyRunId = event.runId
-                        lastInputWasVoice = false
-                        // Догон озвучки: синтез по фразам по мере стрима (не ждём весь текст).
-                        streamingTts.start(event.runId)
-                    }
                 }
                 // Prefer the server's cumulative message text (authoritative, robust to
                 // any reordering); fall back to accumulating deltas if it's absent.
@@ -486,6 +478,15 @@ class ConversationViewModel @Inject constructor(
                 val live = ReplyText.clean(cumulative)
                 _messages.update { msgs ->
                     msgs.map { if (it.id == event.runId) it.copy(content = live) else it }
+                }
+                // Догон озвучки: ответ озвучивается, если ввод был голосовой ЛИБО ядро
+                // сигналит voice в стриме (модель решила озвучить / forced). Стартуем как
+                // только узнали (voice может прийти не на первой дельте); feed(СЫРОЙ кумулятив)
+                // нагонит уже накопленный текст. Связываем тёрн → только он озвучивается.
+                if ((lastInputWasVoice || event.voice) && !streamingTts.isStreaming(event.runId)) {
+                    pendingVoiceReplyRunId = event.runId
+                    lastInputWasVoice = false
+                    streamingTts.start(event.runId)
                 }
                 // Скармливаем СЫРОЙ кумулятив догону (стабильный префикс; markdown чистится
                 // у каждой фразы внутри StreamingTts).
