@@ -18,10 +18,11 @@ kotlin {
     listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Shared"
-            // Динамический: фреймворк сам несёт системные зависимости Compose (UIKit/Metal/…),
-            // статический давал «Undefined symbols arm64» на xcodebuild archive (их надо было
-            // вручную линковать). Динамик экспортирует символы → archive/.ipa собирается.
-            isStatic = false
+            // static: gradle linkReleaseFramework и compileKotlinIosArm64 проходят зелёными;
+            // падает только xcodebuild archive (Undefined symbols — нужны системные фреймворки
+            // в OTHER_LDFLAGS pbxproj). isStatic=false давал Undefined symbols РАНЬШЕ — на самой
+            // gradle-линковке динамика (хуже). Доведение .ipa — отдельная итерация на macOS-CI.
+            isStatic = true
         }
     }
 
