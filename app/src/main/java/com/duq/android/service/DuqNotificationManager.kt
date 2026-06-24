@@ -97,7 +97,8 @@ class DuqNotificationManager @Inject constructor(
             // NEW_TASK обязателен: из убитого состояния тап без него не доставляет extra.
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             when (type) {
-                "core_update" -> putExtra("open_section", "version")
+                // обновление ядра И приложения → раздел «Версия» (как и тап в in-app шторке)
+                "core_update", "update" -> putExtra("open_section", "version")
                 "digest" -> putExtra("open_notifications", "digest")
                 // message и любой прочий тип → вкладка чата (панель сообщения). Без явной
                 // цели warm-тап оставлял юзера на той панели, где app был свёрнут.
