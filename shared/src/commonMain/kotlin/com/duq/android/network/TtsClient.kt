@@ -28,7 +28,7 @@ class TtsClient(private val http: HttpClient) {
             formParameters = Parameters.build { append("text", text) },
         )
         if (!resp.status.isSuccess()) return null
-        val bytes = resp.readRawBytes()
+        val bytes = resp.body<ByteArray>()
         return bytes.takeIf { it.isNotEmpty() }
     }
 }
