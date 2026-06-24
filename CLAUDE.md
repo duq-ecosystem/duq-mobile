@@ -274,7 +274,8 @@ DETACHED из `update_server.py /run` (`start_new_session`), чтобы пере
 `update/CoreUpdateNotifier`: `check()` шлёт пуш «доступна версия» (дедуп по версии);
 **`notifyResult(status)`** — после апдейта читает `status.result` и шлёт пуш
 **«✅ Ядро обновлено — Добро пожаловать в ядро X! Все системы в норме»** либо «⚠️ ошибка»
-(дедуп по `result.ts`) · deep-link `type=core_update` → `open_section=engine` → Движок.
+(дедуп по `result.ts`) · deep-link `type=core_update` → `open_section=version` → раздел «Версия»
+(SectionScreen ловит legacy `engine` через else → тот же VersionScreen).
 
 > Исторический E2E прежнего движка (апдейт не ломал индекс памяти) — `update-server/E2E-VERIFIED.md`
 > (помечен как запись о подходе, к текущему docker-механизму не относится напрямую).
