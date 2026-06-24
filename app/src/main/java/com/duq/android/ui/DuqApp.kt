@@ -85,8 +85,11 @@ fun DuqApp() {
     // DuqApp would leave audio permanently dead. The process teardown frees ExoPlayer.
     LaunchedEffect(Unit) { audioPlaybackManager.initialize() }
 
-    // Глобальная ⚙️ (из верхней панели любого экрана) ведёт в Настройки.
-    LaunchedEffect(Unit) {
+    // Глобальная ⚙️ (из верхней панели любого экрана) ведёт в Настройки. SideEffect, а не
+    // LaunchedEffect(Unit): пере-публикует лямбду на КАЖДОЙ рекомпозиции, поэтому после
+    // конфиг-изменения (ротация/тема), когда rememberNavController даёт новый инстанс,
+    // в AppChrome.openSettings не остаётся ссылка на старый (detached) navController.
+    SideEffect {
         com.duq.android.ui.control.AppChrome.openSettings = { navController.navigate(Screen.Settings.route) }
     }
 
