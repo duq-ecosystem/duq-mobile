@@ -312,11 +312,19 @@ class ConversationViewModel @Inject constructor(
         if (hasAudio && id == null) {
             flog.w(TAG, "voiced history message without server id — replay re-synthesizes под новым id")
         }
+        val mid = id ?: java.util.UUID.randomUUID().toString()
+        val cached = audioPlaybackManager.isCached(mid)
         return Message(
-            id = id ?: java.util.UUID.randomUUID().toString(),
+            id = mid,
             role = MessageRole.fromApiString(role),
             content = text,
-            hasAudio = hasAudio,
+            // Кнопка play живёт, если ответ озвучен (серверный флаг) ИЛИ озвучка лежит в
+            // локальном кэше. Догон синтезирует на КЛИЕНТЕ — сервер про это не знает
+            // (has_audio=false), но msg_<id>.mp3 в кэше есть → после рестарта кнопка пропадала.
+            hasAudio = hasAudio || cached,
+            // Длительность из кэш-WAV — чтобы показывалась на кнопке сразу после рестарта,
+            // не дожидаясь проигрывания (живой PlaybackInfo появляется только при replay).
+            audioDurationMs = if (cached) audioPlaybackManager.cachedDurationMs(mid).takeIf { it > 0 } else null,
         )
     }
 
@@ -340,6 +348,14 @@ class ConversationViewModel @Inject constructor(
             runCatching { ttsLocal.ensureModel() }
                 .onFailure { flog.w(TAG, "TTS warm failed: ${it.message}") }
         }
+    }
+
+    /** Остановить ВСЁ аудио — потоковый догон (AudioTrack) и replay (ExoPlayer). Зовётся при
+     *  уходе app в фон/закрытии (ON_STOP). Без этого Singleton-scope обоих плееров продолжает
+     *  играть после закрытия — голос «не выключить». */
+    fun stopAllAudio() {
+        streamingTts.cancel()
+        audioPlaybackManager.stop()
     }
 
     /** Перечитать список бесед (для переключателя). Тихо игнорит сетевые ошибки. */
@@ -714,6 +730,12 @@ class ConversationViewModel @Inject constructor(
      * Так голос «сохраняется» (replay работает всегда), а не только сразу после ответа.
      */
     fun playMessageAudio(messageId: String) {
+        // Живой догон сейчас озвучивает (AudioTrack) → кнопка = СТОП. Иначе playOrToggle
+        // запустил бы ExoPlayer ПОВЕРХ догона (двойной звук) — догон был неуправляем кнопкой.
+        if (streamingTts.isPlaying()) {
+            streamingTts.cancel()
+            return
+        }
         if (audioPlaybackManager.isCached(messageId)) {
             audioPlaybackManager.playOrToggle(messageId)
             return

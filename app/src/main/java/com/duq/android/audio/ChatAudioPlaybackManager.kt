@@ -454,6 +454,30 @@ class ChatAudioPlaybackManager @Inject constructor(
     }
 
     /**
+     * Длительность кэшированной озвучки (мс) из WAV-заголовка — чтобы показать длительность
+     * на кнопке ДО проигрывания (после рестарта/в истории, где живого PlaybackInfo ещё нет).
+     * 0 — если файла нет/битый заголовок.
+     */
+    fun cachedDurationMs(messageId: String): Int {
+        val f = getCachedAudioFile(messageId)
+        if (!f.exists() || f.length() < 44) return 0
+        return try {
+            java.io.RandomAccessFile(f, "r").use { raf ->
+                val hdr = ByteArray(44)
+                raf.readFully(hdr)
+                fun le32(o: Int): Long =
+                    (hdr[o].toLong() and 0xFF) or ((hdr[o + 1].toLong() and 0xFF) shl 8) or
+                        ((hdr[o + 2].toLong() and 0xFF) shl 16) or ((hdr[o + 3].toLong() and 0xFF) shl 24)
+                val byteRate = le32(28)
+                val dataBytes = le32(40)
+                if (byteRate <= 0) 0 else (dataBytes * 1000 / byteRate).toInt()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "cachedDurationMs failed: ${e.message}"); 0
+        }
+    }
+
+    /**
      * Перепривязать кэш озвучки с одного id на другой. Нужен при reconcile: стрим-пузырь
      * синтезировал озвучку под runId, потом усыновил серверный messageId — без переноса
      * кэша replay по серверному id не находит файл и РЕ-СИНТЕЗИРУЕТ (долго). Переносим

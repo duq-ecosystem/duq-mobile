@@ -49,7 +49,16 @@ class StreamingTts @Inject constructor(
     @Volatile
     private var track: AudioTrack? = null
 
+    // Идёт ли реальное проигрывание звука (AudioTrack играет/дренится). Отдельно от activeRunId:
+    // activeRunId гаснет на finish(), а звук ещё доигрывается в консьюмере. Кнопка плеера по
+    // этому флагу понимает, что догон озвучивает СЕЙЧАС → тап = СТОП (а не второе проигрывание).
+    @Volatile
+    private var playingNow = false
+
     fun isStreaming(runId: String): Boolean = activeRunId == runId
+
+    /** Озвучивает ли догон прямо сейчас (живой AudioTrack) — для кнопки-стоп в UI. */
+    fun isPlaying(): Boolean = playingNow
 
     /** Старт догона для голосового тёрна. Идемпотентно для того же runId. */
     fun start(runId: String) {
@@ -72,6 +81,7 @@ class StreamingTts @Inject constructor(
                     if (s == null) { logger.d(TAG, "seg null (движок не готов) — skip"); continue }
                     val t = track ?: run {
                         sampleRate = s.sampleRate
+                        playingNow = true
                         newTrack(sampleRate).apply { play() }.also { track = it }
                             .also { logger.d(TAG, "AudioTrack play sr=$sampleRate") }
                     }
@@ -102,6 +112,7 @@ class StreamingTts @Inject constructor(
             } finally {
                 track?.let { try { it.stop(); it.release() } catch (_: Exception) {} }
                 track = null
+                playingNow = false
             }
             // единый WAV для replay (мгновенный, с длительностью) — НЕ выполнится при отмене (CE выше)
             if (replay.isNotEmpty() && sampleRate > 0) playback.cacheStreamedAudio(runId, replay, sampleRate)

@@ -252,6 +252,9 @@ fun MainScreen(
                     viewModel.cancelVoiceInput()
                 }
                 Lifecycle.Event.ON_STOP -> {
+                    // Уход в фон/закрытие → остановить ВСЁ аудио (догон + replay). Иначе
+                    // Singleton-плееры продолжают играть после закрытия app («не выключить»).
+                    viewModel.stopAllAudio()
                     // Only unbind, don't stop service - it keeps running for WebSocket
                     if (isBound) {
                         try { context.unbindService(serviceConnection) } catch (_: Exception) {}
