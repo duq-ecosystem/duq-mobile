@@ -184,7 +184,7 @@ class ConversationViewModel @Inject constructor(
             if (rid != null && _messages.value.any { it.id == rid }) {
                 _messages.update { msgs ->
                     val upd = msgs.map {
-                        if (it.id == rid) it.copy(content = ReplyText.clean(msg.content), isStreaming = false) else it
+                        if (it.id == rid) it.copy(content = ReplyText.clean(msg.content), isStreaming = false, hasAudio = it.hasAudio || msg.voice) else it
                     }
                     ChatStepReducer.markAllStepsDone(upd, rid)
                 }
@@ -197,7 +197,10 @@ class ConversationViewModel @Inject constructor(
         // REST), голос озвучить нужно (spokenMsgIds защитит от повторного синтеза).
         if (msg.voice && role == MessageRole.ASSISTANT) speakReply(msg.messageId, msg.content)
         if (isRecentDuplicate(role, msg.content)) return  // своё/REST/история — не дублируем
-        _messages.update { it + Message(id = msg.messageId, role = role, content = msg.content) }
+        // hasAudio=msg.voice СРАЗУ — кнопка play на озвученном ответе появляется без задержки
+        // (раньше ставилась постфактум в speakReply после синтеза; если беседа перезагружалась
+        // из REST до конца синтеза — обновление терялось до следующей перезагрузки).
+        _messages.update { it + Message(id = msg.messageId, role = role, content = msg.content, hasAudio = msg.voice) }
     }
 
     private val flog = com.duq.android.logging.FileLogger(context)
