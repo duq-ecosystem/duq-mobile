@@ -26,11 +26,19 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    # Сборка unsigned .ipa. Xcode-проект через Run Script Build Phase зовёт
-    # `./gradlew :shared:embedAndSignAppleFrameworkForXcode` — Gradle сам соберёт
-    # статический фреймворк Shared под iosArm64/Release и положит его в
-    # shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME) (= FRAMEWORK_SEARCH_PATHS).
-    # Отдельный linkReleaseFramework-шаг не нужен — archive делает то же самое.
+    # Статический Shared.framework собираем ОТДЕЛЬНЫМ gradle-шагом ДО xcodebuild.
+    # `embedAndSignAppleFrameworkForXcode` в Run Script фазе скипался (нет нужного
+    # Xcode-окружения / он завязан на встраивание .framework) → Shared не линковался
+    # → undefined symbols (включая авто-линкуемый UIUtilities из Compose UIKit-интеропа).
+    # linkReleaseFrameworkIosArm64 кладёт собранный статический фреймворк в
+    # shared/build/bin/iosArm64/releaseFramework/Shared.framework — туда смотрит
+    # FRAMEWORK_SEARCH_PATHS из project.pbxproj.
+    - name: Build shared iOS framework (static, iosArm64/Release)
+      run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --no-daemon
+
+    # Сборка unsigned .ipa. Xcode линкует уже готовый статический Shared.framework
+    # через FRAMEWORK_SEARCH_PATHS + OTHER_LDFLAGS (-framework Shared). Run Script
+    # "Compile Kotlin Framework" из pbxproj удалён — фреймворк готовится gradle выше.
     - name: Archive iosApp (unsigned)
       run: |
         xcodebuild \
