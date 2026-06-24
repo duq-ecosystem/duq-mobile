@@ -136,7 +136,8 @@ class DuqChatClient @Inject constructor(
 
     /** TEXT_DELTA — кумулятивный текст ответа на лету. Биндим к in-flight тёрну (currentRunId). */
     fun onStreamDelta(cumulative: String) {
-        val rid = currentRunId ?: return
+        val rid = currentRunId
+        if (rid == null) { logger.d(TAG, "onStreamDelta DROP: currentRunId=null len=${cumulative.length}"); return }
         scope.launch { _chatEvents.emit(OcChatEvent(runId = rid, state = "delta", fullText = cumulative)) }
     }
 

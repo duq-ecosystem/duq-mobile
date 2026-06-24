@@ -143,6 +143,7 @@ class DuqNodeClient @Inject constructor(
         @Suppress("UNCHECKED_CAST")
         val data = (frame["data"] as? Map<String, Any?>) ?: emptyMap()
         val cumulative = data["message"] as? String ?: return
+        logger.d(TAG, "TEXT_${if (done) "DONE" else "DELTA"} len=${cumulative.length}")
         if (done) chatClient.onStreamDone(cumulative) else chatClient.onStreamDelta(cumulative)
     }
 
