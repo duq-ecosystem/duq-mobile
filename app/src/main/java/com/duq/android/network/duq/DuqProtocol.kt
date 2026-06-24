@@ -87,7 +87,8 @@ data class HistoryMsg(
     val id: String? = null,         // серверный id — нужен как ключ кэша озвучки при replay
     val role: String,    // "user" | "assistant"
     val content: String,
-    val has_audio: Boolean = false  // ответ был озвучен → показать кнопку play в истории
+    // ответ был озвучен → показать кнопку play в истории (camelCase + маппинг на snake_case JSON)
+    @SerializedName("has_audio") val hasAudio: Boolean = false
 )
 
 /**

@@ -38,6 +38,9 @@ data class Message(
     val role: MessageRole,
     val content: String,
     val hasAudio: Boolean = false,
+    // Идёт ре-синтез озвучки по тапу play (кэш был стёрт) — кнопка показывает спиннер
+    // и блокирует повторный тап (защита от двойного синтеза).
+    val isAudioLoading: Boolean = false,
     val audioDurationMs: Int? = null,
     val waveform: List<Float>? = null,
     val isStreaming: Boolean = false,

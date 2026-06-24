@@ -15,6 +15,7 @@ import com.duq.android.network.duq.DuqIncomingMessage
 import com.duq.android.network.duq.GatewayConnectionState
 import com.duq.android.network.duq.OcAgentStep
 import com.duq.android.network.duq.OcChatEvent
+import com.duq.android.network.duq.OcHistoryMsg
 import com.duq.android.update.AppUpdater
 import com.duq.android.util.ReplyText
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -255,10 +256,22 @@ class ConversationViewModel @Inject constructor(
             pendingNewConversation = false
             val history = runCatching { gatewayClient.loadMessages(first.id) }.getOrElse { emptyList() }
             if (_activeAgentId.value != agentId) return@launch
-            _messages.value = history.map {
-                Message(role = MessageRole.fromApiString(it.role), content = it.text)
-            }
+            _messages.value = history.map { it.toMessage() }
         }
+    }
+
+    /** История беседы (REST) → Message. Серверный id = ключ кэша озвучки (replay), hasAudio
+     *  → кнопка play переживает перезагрузку. Единая точка маппинга для всех загрузок истории. */
+    private fun OcHistoryMsg.toMessage(): Message {
+        if (hasAudio && id == null) {
+            flog.w(TAG, "voiced history message without server id — replay re-synthesizes под новым id")
+        }
+        return Message(
+            id = id ?: java.util.UUID.randomUUID().toString(),
+            role = MessageRole.fromApiString(role),
+            content = text,
+            hasAudio = hasAudio,
+        )
     }
 
     init {
@@ -295,14 +308,7 @@ class ConversationViewModel @Inject constructor(
             }
             // Применяем только если пользователь не переключился снова за время загрузки.
             if (_activeConversationId.value != id) return@launch
-            _messages.value = history.map {
-                Message(
-                    id = it.id ?: java.util.UUID.randomUUID().toString(),
-                    role = MessageRole.fromApiString(it.role),
-                    content = it.text,
-                    hasAudio = it.hasAudio,
-                )
-            }
+            _messages.value = history.map { it.toMessage() }
             flog.i(TAG, "selectConversation($id): ${history.size} messages")
         }
     }
@@ -339,16 +345,7 @@ class ConversationViewModel @Inject constructor(
             }
             flog.i(TAG, "restoreServerHistory: conv=${first.id} ${history.size} messages")
             if (history.isEmpty()) return@launch
-            val restored = history.map {
-                // id серверный (ключ кэша озвучки → replay по тапу), hasAudio → кнопка play
-                // переживает перезагрузку истории (раньше id был случайный, hasAudio=false).
-                Message(
-                    id = it.id ?: java.util.UUID.randomUUID().toString(),
-                    role = MessageRole.fromApiString(it.role),
-                    content = it.text,
-                    hasAudio = it.hasAudio,
-                )
-            }
+            val restored = history.map { it.toMessage() }
             // Seed from the server transcript ONLY while the chat is still empty —
             // the normal cold-start case. If a reply already streamed in during the
             // connect window (or the user sent something), DON'T clobber/duplicate it:
@@ -631,17 +628,28 @@ class ConversationViewModel @Inject constructor(
             return
         }
         val msg = _messages.value.firstOrNull { it.id == messageId } ?: return
-        if (msg.content.isBlank()) return
+        if (msg.content.isBlank() || msg.isAudioLoading) return  // guard двойного тапа во время синтеза
+        val originConv = _activeConversationId.value
+        setAudioLoading(messageId, true)
         viewModelScope.launch {
-            val audio = try {
-                ttsLocal.trySynthesize(msg.content, messageId) ?: ttsClient.synthesize(msg.content, messageId)
+            try {
+                val audio = ttsLocal.trySynthesize(msg.content, messageId) ?: ttsClient.synthesize(msg.content, messageId)
+                // Не играем, если пользователь ушёл в другую беседу за время синтеза.
+                if (audio != null && _activeConversationId.value == originConv) {
+                    audioPlaybackManager.play(messageId, audio)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "replay synth failed: ${e.message}"); null
-            } ?: return@launch
-            audioPlaybackManager.play(messageId, audio)
+                Log.e(TAG, "replay synth failed: ${e.message}")
+            } finally {
+                setAudioLoading(messageId, false)
+            }
         }
+    }
+
+    private fun setAudioLoading(messageId: String, loading: Boolean) {
+        _messages.update { list -> list.map { if (it.id == messageId) it.copy(isAudioLoading = loading) else it } }
     }
 
     private fun speakReply(messageId: String, text: String) {

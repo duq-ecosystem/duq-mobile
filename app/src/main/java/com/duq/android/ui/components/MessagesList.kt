@@ -82,7 +82,10 @@ fun MessagesList(
                 items(reversedMessages, key = { it.id }) { message ->
                     // Determine audio state for this specific message
                     val isCurrentlyPlaying = audioPlaybackInfo.messageId == message.id
-                    val audioState = if (isCurrentlyPlaying) {
+                    val audioState = if (message.isAudioLoading) {
+                        // Идёт ре-синтез озвучки → спиннер + клик заблокирован (см. AudioMessageControls).
+                        AudioPlaybackState.LOADING
+                    } else if (isCurrentlyPlaying) {
                         when (audioPlaybackInfo.state) {
                             PlaybackState.LOADING -> AudioPlaybackState.LOADING
                             PlaybackState.PLAYING -> AudioPlaybackState.PLAYING
