@@ -12,7 +12,7 @@ lifecycle = "2.9.0"            # org.jetbrains.androidx.lifecycle (multiplatform
 navigation = "2.9.0-alpha18"  # org.jetbrains.androidx.navigation (multiplatform)
 
 # DI
-koin = "4.1.0"
+koin = "4.1.1"
 
 # Network
 ktor = "3.5.0"
