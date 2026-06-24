@@ -73,19 +73,32 @@ class StreamingTts @Inject constructor(
             var sampleRate = 0
             var totalFrames = 0
             val replay = mutableListOf<ShortArray>()
+            // ПРЕФЕТЧ (best practice): producer синтезирует фразы ВПЕРЁД в очередь (синтез ~1с
+            // быстрее проигрывания фразы ~неск.сек → очередь набивается), а consumer льёт PCM в
+            // AudioTrack без пауз. Раньше synth и write были в ОДНОМ цикле — следующую фразу
+            // синтезировали ТОЛЬКО после доигрывания текущей → тишина-пауза между фразами
+            // («голос прерывается»). Producer — child job (отменяется вместе с догоном).
+            val pcmQueue = Channel<TtsSamples>(Channel.UNLIMITED)
+            val producer = launch {
+                try {
+                    for (raw in ch) {
+                        val text = ReplyText.clean(raw)
+                        if (text.isBlank()) continue
+                        val s = ttsLocal.synthesizeSamples(text)
+                        if (s == null) { logger.d(TAG, "synth null (движок не готов) — skip"); continue }
+                        logger.d(TAG, "synth '${text.take(28)}' samples=${s.pcm.size}")
+                        pcmQueue.send(s)
+                    }
+                } finally { pcmQueue.close() }
+            }
             try {
-                for (raw in ch) {
-                    val text = ReplyText.clean(raw)
-                    if (text.isBlank()) continue
-                    val s = ttsLocal.synthesizeSamples(text)
-                    if (s == null) { logger.d(TAG, "seg null (движок не готов) — skip"); continue }
+                for (s in pcmQueue) {
                     val t = track ?: run {
                         sampleRate = s.sampleRate
                         playingNow = true
                         newTrack(sampleRate).apply { play() }.also { track = it }
                             .also { logger.d(TAG, "AudioTrack play sr=$sampleRate") }
                     }
-                    logger.d(TAG, "seg '${text.take(28)}' samples=${s.pcm.size}")
                     // WRITE_BLOCKING явно; проверяем возврат — при ошибке (потеря focus/HAL)
                     // НЕ увеличиваем totalFrames (иначе drain зависнет), выходим.
                     val written = t.write(s.pcm, 0, s.pcm.size, AudioTrack.WRITE_BLOCKING)
@@ -110,6 +123,7 @@ class StreamingTts @Inject constructor(
             } catch (e: Exception) {
                 logger.e(TAG, "догон stream error: ${e.message}")
             } finally {
+                producer.cancel()
                 track?.let { try { it.stop(); it.release() } catch (_: Exception) {} }
                 track = null
                 playingNow = false

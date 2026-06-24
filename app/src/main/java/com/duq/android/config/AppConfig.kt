@@ -99,7 +99,7 @@ object AppConfig {
     // Переносим TTS с сервера (Silero v4 на VPS :8766) на устройство — симметрично STT:
     // разгружает VPS, убирает сетевую латентность, голос синтезируется офлайн. Движок —
     // sherpa-onnx (k2-fsa, Apache-2.0, готовый Android-AAR через JitPack); голос — Piper
-    // ru_RU-dmitri-medium (VITS, 22050 Hz, МУЖСКОЙ — Дак мужчина; ruslan звучал плохо, пробуем dmitri).
+    // ru_RU-denis-medium (VITS, 22050 Hz, МУЖСКОЙ — Дак мужчина; ruslan/dmitri звучали плохо, пробуем denis).
     // Silero-ONNX отвергнут: официального ONNX у Silero
     // нет (мейнтейнер закрыл — внутренний нейро-акцентор put_accent), портировать на Kotlin
     // неподъёмно. При TTS_ON_DEVICE=false ИЛИ ошибке синтеза — fallback на серверный TTS_URL.
@@ -107,7 +107,7 @@ object AppConfig {
     // Готовый sherpa-бандл (model.onnx + tokens.txt + espeak-ng-data) одним tar.bz2-архивом.
     // Качается в filesDir при первом голосовом ответе (НЕ в APK — ~67MB) и распаковывается.
     // URL — github release k2-fsa/sherpa-onnx (tag tts-models), стабильный.
-    const val TTS_MODEL_BUNDLE = "vits-piper-ru_RU-dmitri-medium"
+    const val TTS_MODEL_BUNDLE = "vits-piper-ru_RU-denis-medium"
     const val TTS_MODEL_URL =
         "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/$TTS_MODEL_BUNDLE.tar.bz2"
     // Пути внутри распакованного бандла (структура sherpa-onnx Piper-моделей).
