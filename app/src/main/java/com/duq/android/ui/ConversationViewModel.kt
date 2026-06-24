@@ -38,6 +38,7 @@ class ConversationViewModel @Inject constructor(
     private val audioRecorder: AudioRecorderInterface,
     private val ttsLocal: com.duq.android.audio.TtsLocal,
     private val ttsClient: com.duq.android.network.TtsClient,
+    private val streamingTts: com.duq.android.audio.StreamingTts,
     private val notificationInbox: com.duq.android.data.NotificationInbox,
 ) : ViewModel() {
 
@@ -462,6 +463,8 @@ class ConversationViewModel @Inject constructor(
                     if (lastInputWasVoice) {
                         pendingVoiceReplyRunId = event.runId
                         lastInputWasVoice = false
+                        // Догон озвучки: синтез по фразам по мере стрима (не ждём весь текст).
+                        streamingTts.start(event.runId)
                     }
                 }
                 // Prefer the server's cumulative message text (authoritative, robust to
@@ -475,10 +478,14 @@ class ConversationViewModel @Inject constructor(
                 _messages.update { msgs ->
                     msgs.map { if (it.id == event.runId) it.copy(content = live) else it }
                 }
+                // Скармливаем СЫРОЙ кумулятив догону (стабильный префикс; markdown чистится
+                // у каждой фразы внутри StreamingTts).
+                if (event.runId == pendingVoiceReplyRunId) streamingTts.feed(event.runId, cumulative)
             }
             "final" -> {
                 disarmReplyWatchdog()
-                val finalContent = ReplyText.clean(event.fullText ?: streamBuffer.toString())
+                val finalRaw = event.fullText ?: streamBuffer.toString()
+                val finalContent = ReplyText.clean(finalRaw)
                 currentRunId = null; streamBuffer.clear(); _isProcessing.value = false
                 finalizedRunIds[event.runId] = true
 
@@ -517,13 +524,26 @@ class ConversationViewModel @Inject constructor(
                 }
 
                 // Contextual TTS: speak the reply only if this turn came from voice.
-                if (speakThisReply) speakReply(event.runId, finalContent)
+                if (streamingTts.isStreaming(event.runId)) {
+                    // Догон уже озвучивает по фразам — финалим остатком (СЫРОЙ текст:
+                    // offset-консистентно с feed), НЕ дублируем полным speakReply.
+                    streamingTts.finish(event.runId, finalRaw)
+                    // Дедуп: последующий chat.message (серверный id) озвучивает msg.content
+                    // (СЫРОЙ текст) — помечаем и сырой, и cleaned, чтобы повторного полного
+                    // синтеза не было (speakReply дедупит по spokenContents).
+                    spokenContents.put(finalContent.trim(), true)
+                    spokenContents.put(finalRaw.trim(), true)
+                    _messages.update { msgs -> msgs.map { if (it.id == event.runId) it.copy(hasAudio = true) else it } }
+                } else if (speakThisReply) {
+                    speakReply(event.runId, finalContent)
+                }
             }
             "aborted", "error" -> {
                 disarmReplyWatchdog()
                 val errText = event.errorMessage ?: "Error"
                 currentRunId = null; streamBuffer.clear(); _isProcessing.value = false
                 finalizedRunIds[event.runId] = true
+                if (streamingTts.isStreaming(event.runId)) streamingTts.cancel()
                 if (event.runId == pendingVoiceReplyRunId) pendingVoiceReplyRunId = null
                 lastInputWasVoice = false
                 _messages.update { msgs ->

@@ -86,6 +86,13 @@ class ChatAudioPlaybackManager @Inject constructor(
     private val _playbackInfo = MutableStateFlow(PlaybackInfo())
     val playbackInfo: StateFlow<PlaybackInfo> = _playbackInfo.asStateFlow()
 
+    // --- Стрим-TTS: очередь сегментов-фраз (догон озвучки по мере стрима текста) ---
+    // Доступ только из main thread (через mainHandler) — без доп. синхронизации.
+    private val segmentQueue = ArrayDeque<File>()
+    @Volatile
+    private var streamingMsgId: String? = null
+    private var playingSegment = false
+
     /**
      * Initialize the player (call on app start)
      */
@@ -148,6 +155,74 @@ class ChatAudioPlaybackManager @Inject constructor(
             stop()
             playFile(messageId, if (cached.exists()) cached else audioFile)
         }
+    }
+
+    /**
+     * Стрим-TTS: добавить синтезированный сегмент-фразу в очередь воспроизведения.
+     * Первый сегмент стартует сессию (keyed by messageId), последующие доигрываются
+     * по порядку. Для «догона» озвучки по мере стрима текста ответа.
+     */
+    fun enqueueSegment(messageId: String, audioFile: File) {
+        if (isReleased || !audioFile.exists()) return
+        mainHandler.post {
+            if (isReleased) return@post
+            if (streamingMsgId != messageId) { // новая стрим-сессия
+                stopInternal()
+                streamingMsgId = messageId
+                _playbackInfo.value = PlaybackInfo(messageId = messageId, state = PlaybackState.PLAYING)
+            }
+            segmentQueue.addLast(audioFile)
+            if (!playingSegment) playNextSegment()
+        }
+    }
+
+    /** Проиграть следующий сегмент из очереди (main thread). */
+    private fun playNextSegment() {
+        if (isReleased) return
+        val msgId = streamingMsgId
+        val file = segmentQueue.removeFirstOrNull() ?: run {
+            playingSegment = false
+            // Очередь пуста: стрим завершён → сброс; иначе ждём следующий сегмент.
+            if (streamingMsgId == null) _playbackInfo.value = PlaybackInfo()
+            return
+        }
+        playingSegment = true
+        try {
+            val player = exoPlayer ?: ExoPlayer.Builder(context).build().also { exoPlayer = it }
+            currentListener?.let { player.removeListener(it) }
+            val listener = object : Player.Listener {
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (state == Player.STATE_ENDED) playNextSegment()
+                }
+                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                    Log.e(TAG, "segment playback error: ${error.message}")
+                    playNextSegment() // не застреваем — следующий сегмент
+                }
+            }
+            currentListener = listener
+            player.addListener(listener)
+            player.setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
+            player.prepare()
+            player.play()
+            _playbackInfo.value = PlaybackInfo(messageId = msgId, state = PlaybackState.PLAYING)
+        } catch (e: Exception) {
+            Log.e(TAG, "playNextSegment failed: ${e.message}")
+            playingSegment = false
+        }
+    }
+
+    /** Стрим завершён: новых сегментов не будет. Когда очередь доиграет — сброс в IDLE. */
+    fun finishStream(messageId: String) {
+        mainHandler.post {
+            if (streamingMsgId != messageId) return@post
+            streamingMsgId = null
+            if (!playingSegment && segmentQueue.isEmpty()) _playbackInfo.value = PlaybackInfo()
+        }
+    }
+
+    /** Прервать стрим-озвучку (новый тёрн/abort): стоп + очистка очереди. */
+    fun cancelStream() {
+        mainHandler.post { stopInternal() }
     }
 
     /**
@@ -288,13 +363,19 @@ class ChatAudioPlaybackManager @Inject constructor(
      * Stop playback and reset state
      */
     fun stop() {
-        mainHandler.post {
-            stopProgressUpdates()
-            exoPlayer?.stop()
-            exoPlayer?.clearMediaItems()
-            _playbackInfo.value = PlaybackInfo()
-            Log.d(TAG, "Playback stopped")
-        }
+        mainHandler.post { stopInternal() }
+    }
+
+    /** Останов + сброс (main thread). Чистит и стрим-очередь сегментов. */
+    private fun stopInternal() {
+        stopProgressUpdates()
+        streamingMsgId = null
+        segmentQueue.clear()
+        playingSegment = false
+        exoPlayer?.stop()
+        exoPlayer?.clearMediaItems()
+        _playbackInfo.value = PlaybackInfo()
+        Log.d(TAG, "Playback stopped")
     }
 
     /**
