@@ -152,14 +152,17 @@ private fun MainShell(
 
     // Deep-link на вкладку (тап по обычному message-пушу → чат). Без этого warm-тап
     // оставлял юзера на прошлой панели (Пульт/раздел), а сообщение — в чате.
+    // ⚠️ Ведём на саму вкладку, СБРАСЫВАЯ деталь-секцию (напр. «Версию»), открытую поверх
+    // неё: popUpTo(start){inclusive=false} срезает всё над вкладкой. БЕЗ restoreState —
+    // он восстанавливал бы сохранённую секцию вместо чистого чата (E2E на build-300: тап
+    // message-пуша на экране «Версия» оставался на «Версии», т.к. restoreState возвращал её).
     LaunchedEffect(Unit) {
         DeepLinkState.tabEvents.receiveAsFlow().collect { route ->
             keyboardController?.hide()
             focusManager.clearFocus(force = true)
             tabNav.navigate(route) {
-                popUpTo(tabNav.graph.findStartDestination().id) { saveState = true }
+                popUpTo(tabNav.graph.findStartDestination().id) { inclusive = false }
                 launchSingleTop = true
-                restoreState = true
             }
         }
     }
