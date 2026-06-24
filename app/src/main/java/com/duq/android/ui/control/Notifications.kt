@@ -57,12 +57,13 @@ class NotificationsViewModel @Inject constructor(
     fun clearDigests() = inbox.clearDigests()
     fun clearNotifs() = inbox.clearNotifs()
 
-    @Volatile private var installing = false
+    // compareAndSet — атомарный check-then-act (volatile давал только visibility, не
+    // атомарность). На Main двойной тап и так сериализуется, но так идиоматично-корректно.
+    private val installing = java.util.concurrent.atomic.AtomicBoolean(false)
     fun installUpdate() {
-        if (installing) return
-        installing = true
+        if (!installing.compareAndSet(false, true)) return
         viewModelScope.launch(Dispatchers.IO) {
-            try { AppUpdater(context).downloadAndInstall() } finally { installing = false }
+            try { AppUpdater(context).downloadAndInstall() } finally { installing.set(false) }
         }
     }
 }
@@ -178,7 +179,7 @@ private fun NotifList(items: List<NotificationInbox.Item>, vm: NotificationsView
                             // Апдейт приложения И обновление ЯДРА → раздел «Версия» (там и установка).
                             // core_update раньше падал в else (просто разворачивался) — баг «не ведёт на панель».
                             "update", "core_update" -> {
-                                com.duq.android.ui.DeepLinkState.pendingSection = "version"
+                                com.duq.android.ui.DeepLinkState.sectionEvents.trySend("version")
                                 AppChrome.showNotifications = false
                             }
                             else -> expandedId = if (expanded) null else item.id
@@ -236,5 +237,9 @@ private fun EmptyShade(text: String) {
     }
 }
 
-private fun fmtNotifTime(ms: Long): String =
-    java.text.SimpleDateFormat("dd.MM HH:mm", java.util.Locale.getDefault()).format(java.util.Date(ms))
+// Один экземпляр форматтера на поток (SimpleDateFormat не thread-safe) — не аллоцируем
+// его на каждый видимый элемент LazyColumn при каждой рекомпозиции.
+private val notifTimeFmt = ThreadLocal.withInitial {
+    java.text.SimpleDateFormat("dd.MM HH:mm", java.util.Locale.getDefault())
+}
+private fun fmtNotifTime(ms: Long): String = notifTimeFmt.get()!!.format(java.util.Date(ms))

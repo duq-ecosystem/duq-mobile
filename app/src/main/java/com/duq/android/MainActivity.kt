@@ -41,9 +41,9 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         intent.getStringExtra("porcupine_key")?.let { settingsRepository.savePorcupineApiKey(it) }
         // Deep-link из уведомления: открыть раздел Пульта (напр. «engine» по пушу обновления).
-        intent.getStringExtra("open_section")?.let { DeepLinkState.pendingSection = it }
+        intent.getStringExtra("open_section")?.let { DeepLinkState.sectionEvents.trySend(it) }
         // Обычный message-пуш → вкладка чата (иначе warm-тап оставит на прошлой панели).
-        intent.getStringExtra("open_tab")?.let { DeepLinkState.pendingTab = it }
+        intent.getStringExtra("open_tab")?.let { DeepLinkState.tabEvents.trySend(it) }
         if (intent.getStringExtra("open_notifications") == "digest")
             com.duq.android.ui.control.AppChrome.openShade(1)
         enableEdgeToEdge()
@@ -81,8 +81,8 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.getStringExtra("open_section")?.let { DeepLinkState.pendingSection = it }
-        intent.getStringExtra("open_tab")?.let { DeepLinkState.pendingTab = it }
+        intent.getStringExtra("open_section")?.let { DeepLinkState.sectionEvents.trySend(it) }
+        intent.getStringExtra("open_tab")?.let { DeepLinkState.tabEvents.trySend(it) }
         if (intent.getStringExtra("open_notifications") == "digest")
             com.duq.android.ui.control.AppChrome.openShade(1)
     }

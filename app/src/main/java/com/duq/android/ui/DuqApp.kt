@@ -31,6 +31,8 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 sealed class Screen(val route: String) {
     object Shell : Screen("shell")       // bottom-nav оболочка (Чат/Пульт)
@@ -46,16 +48,20 @@ private val TABS = listOf(
 // Стартуем с чата (основной экран), несмотря на порядок вкладок в баре.
 private const val START_TAB = "tab_chat"
 
-/** Deep-link из уведомления: какой раздел Пульта открыть (напр. "engine" по пушу
- *  «обновление ядра доступно»). MainActivity ставит из intent-extra, MainShell
- *  потребляет и навигирует к разделу. */
+/**
+ * Deep-link из уведомления — ОДНОРАЗОВЫЕ события навигации (не state). Тап по пушу
+ * эмитит в Channel, MainShell собирает и навигирует. Channel (а не nullable
+ * mutableStateOf): переживает cold-start — событие, отправленное из onCreate ДО входа
+ * MainShell в композицию, буферизуется и доставляется коллектору при подписке; не теряет
+ * повторные тапы и не дедупит по значению (старый паттерн со state терял второй тап тем же
+ * значением до сброса в null). MainActivity/шторка эмитят, MainShell потребляет.
+ */
 object DeepLinkState {
-    var pendingSection by mutableStateOf<String?>(null)
-    // Deep-link на ВКЛАДКУ нижней навигации (route, напр. "tab_chat"). Тап по обычному
-    // message-пушу (и сервисному «Connected») ведёт сюда → чат, а не оставляет на той
-    // панели, где app был свёрнут. Каждый пуш ОБЯЗАН нести цель-панель, иначе warm-тап
-    // молча возрождает прошлый экран (повторяющийся баг «не переводит на панель»).
-    var pendingTab by mutableStateOf<String?>(null)
+    // Раздел Пульта (напр. "version" по пушу обновления ядра/приложения).
+    val sectionEvents = Channel<String>(Channel.UNLIMITED)
+    // Вкладка нижней навигации (напр. "tab_chat" по обычному message-пушу и сервисному
+    // «Connected») — иначе warm-тап оставил бы юзера на прошлой панели, а сообщение в чате.
+    val tabEvents = Channel<String>(Channel.UNLIMITED)
 }
 
 @EntryPoint
@@ -132,18 +138,19 @@ private fun MainShell(
         }
     }
 
-    // Deep-link из уведомления (тап по пушу «обновление ядра» → раздел «Движок»).
-    LaunchedEffect(DeepLinkState.pendingSection) {
-        DeepLinkState.pendingSection?.let { key ->
+    // Deep-link из уведомления → раздел Пульта (тап по пушу «обновление ядра» → «Версия»).
+    // Коллектор на Unit-ключе: живёт пока MainShell в композиции, дренит буфер событий
+    // (в т.ч. отправленных до композиции на cold-start) и каждый следующий тап.
+    LaunchedEffect(Unit) {
+        DeepLinkState.sectionEvents.receiveAsFlow().collect { key ->
             tabNav.navigate("section/$key")
-            DeepLinkState.pendingSection = null
         }
     }
 
     // Deep-link на вкладку (тап по обычному message-пушу → чат). Без этого warm-тап
     // оставлял юзера на прошлой панели (Пульт/раздел), а сообщение — в чате.
-    LaunchedEffect(DeepLinkState.pendingTab) {
-        DeepLinkState.pendingTab?.let { route ->
+    LaunchedEffect(Unit) {
+        DeepLinkState.tabEvents.receiveAsFlow().collect { route ->
             keyboardController?.hide()
             focusManager.clearFocus(force = true)
             tabNav.navigate(route) {
@@ -151,7 +158,6 @@ private fun MainShell(
                 launchSingleTop = true
                 restoreState = true
             }
-            DeepLinkState.pendingTab = null
         }
     }
 
