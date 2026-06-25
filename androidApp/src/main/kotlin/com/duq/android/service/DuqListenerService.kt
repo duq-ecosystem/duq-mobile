@@ -53,27 +53,6 @@ class DuqListenerService : Service(), VoiceServiceController {
             private set
     }
 
-    /** Добавить mediaProjection-тип FGS (Android 14+ требует его до старта захвата). */
-    fun raiseMediaProjectionForeground() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
-        val n = notificationManager.createServiceNotification()
-        // location/camera типы — только при наличии runtime-разрешения (иначе
-        // SecurityException роняет сервис, см. startForegroundServiceWithNotification).
-        var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-        if (hasPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ||
-            hasPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)) {
-            type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-        }
-        if (hasPermission(android.Manifest.permission.CAMERA)) {
-            type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-        }
-        runCatching { startForeground(DuqNotificationManager.SERVICE_NOTIFICATION_ID, n, type) }
-            .onFailure { Log.e(TAG, "raiseMediaProjectionForeground: ${it.message}") }
-    }
-
     // Koin-инъекции (koin-android by inject()) — синглтоны из общего графа.
     private val notificationManager: DuqNotificationManager by inject()
     private val voiceCommandProcessor: VoiceCommandProcessor by inject()
