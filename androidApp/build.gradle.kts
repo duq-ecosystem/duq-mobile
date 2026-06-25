@@ -24,11 +24,16 @@ android {
                 ?: project.findProperty("KEYSTORE_PASSWORD")?.toString()
             val kAlias = System.getenv("KEY_ALIAS") ?: project.findProperty("KEY_ALIAS")?.toString()
             val kPassword = System.getenv("KEY_PASSWORD") ?: project.findProperty("KEY_PASSWORD")?.toString()
-            if (keystoreFile != null && keystorePassword != null && kAlias != null && kPassword != null) {
+            // takeIf isNotBlank: пустые env-секреты (KEYSTORE_PASSWORD="") трактуем как
+            // отсутствие → release-конфиг не ставится → fallback на debug-подпись.
+            val pwd = keystorePassword?.takeIf { it.isNotBlank() }
+            val al = kAlias?.takeIf { it.isNotBlank() }
+            val kpwd = kPassword?.takeIf { it.isNotBlank() }
+            if (keystoreFile != null && pwd != null && al != null && kpwd != null) {
                 storeFile = file(keystoreFile)
-                storePassword = keystorePassword
-                keyAlias = kAlias
-                keyPassword = kPassword
+                storePassword = pwd
+                keyAlias = al
+                keyPassword = kpwd
             }
         }
     }
