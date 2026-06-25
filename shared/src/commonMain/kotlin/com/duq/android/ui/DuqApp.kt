@@ -1,5 +1,6 @@
 package com.duq.android.ui
 
+import androidx.savedstate.read
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -216,7 +217,7 @@ private fun MainShell(
                 )
             }
             composable("section/{key}") { entry ->
-                val key = entry.arguments?.getString("key") ?: ""
+                val key = entry.arguments?.read { getStringOrNull("key") } ?: ""
                 SectionScreen(
                     sectionKey = key,
                     onBack = { tabNav.popBackStack() }

@@ -27,7 +27,7 @@ class IosAudioFileCache(
     private val fm = NSFileManager.defaultManager
 
     override suspend fun writeWav(messageId: String, audio: ByteArray): String? =
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             try {
                 val dir = ensureDir(TTS_DIR)
                 val path = "$dir/msg_${sanitize(messageId)}.wav"
