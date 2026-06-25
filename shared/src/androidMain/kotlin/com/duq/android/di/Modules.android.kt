@@ -51,4 +51,21 @@ actual val platformModule: Module = module {
         )
     }
     single { com.duq.android.network.duq.DuqNodeClient(get(), get(), get(), get()) }
+
+    // Голосовой флоу фонового сервиса (DuqListenerService): маппер ошибок + обработчик
+    // голосовых команд (бип→запись→STT→отправка). Зависимости — из audioModule
+    // (AudioRecorderInterface/AudioPlaybackManager/BeepPlayer) и common (DuqChatClient).
+    // DuqNotificationManager НЕ здесь: он в androidApp (R/MainActivity) — биндится локальным
+    // модулем приложения (androidApp/.../di/appAndroidModule).
+    single<com.duq.android.service.ErrorMapper> { com.duq.android.service.DefaultErrorMapper() }
+    single {
+        com.duq.android.service.VoiceCommandProcessor(
+            context = androidContext(),
+            audioRecorder = get(),
+            chatAudioPlaybackManager = get(),
+            beepPlayer = get(),
+            gatewayClient = get(),
+            errorMapper = get(),
+        )
+    }
 }

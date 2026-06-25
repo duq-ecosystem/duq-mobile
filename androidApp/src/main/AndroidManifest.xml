@@ -24,6 +24,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <!-- screen.record consent: full-screen intent поднимает consent-Activity из фона. -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- BootReceiver: приёмник BOOT_COMPLETED (сервис стартует при открытии app, не на boot). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".DuqApplication"
@@ -72,6 +74,43 @@
             android:name="com.duq.android.screen.MediaProjectionForegroundService"
             android:foregroundServiceType="dataSync|mediaProjection"
             android:exported="false" />
+
+        <!-- Постоянный фоновый сервис: WS-присутствие + чат-клиент живут в фоне (бот
+             достукивается, когда app свёрнут). Без микрофона. Тип dataSync (WS) +
+             location/camera (phone-control reports/snap); mediaProjection поднимается
+             динамически в момент screen.record. Класс — в androidApp (R/MainActivity). -->
+        <service
+            android:name=".service.DuqListenerService"
+            android:foregroundServiceType="dataSync|location|camera|mediaProjection"
+            android:exported="false" />
+
+        <!-- VoiceInteractionService: системная роль ассистента («назначить DUQ
+             ассистентом по умолчанию»). Требует BIND_VOICE_INTERACTION. -->
+        <service
+            android:name=".service.DuqVoiceInteractionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true">
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/voice_interaction_service" />
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".service.DuqVoiceInteractionSessionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true" />
+
+        <!-- BootReceiver: при перезагрузке устройства (сервис стартует при открытии app). -->
+        <receiver
+            android:name=".service.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

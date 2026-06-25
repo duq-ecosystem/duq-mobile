@@ -22,11 +22,32 @@ class MainActivity : ComponentActivity() {
     private val requestPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { /* результат не блокирует UI */ }
 
+    companion object {
+        /**
+         * Видимость UI. [com.duq.android.service.DuqListenerService] читает это, чтобы НЕ
+         * слать системное уведомление о финальном ответе, когда чат и так на экране
+         * (иначе дубль: пузырь в UI + push). Обновляется в onStart/onStop.
+         */
+        @Volatile
+        var isInForeground: Boolean = false
+            private set
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestStartupPermissions()
         setContent { App() }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        isInForeground = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        isInForeground = false
     }
 
     private fun requestStartupPermissions() {
