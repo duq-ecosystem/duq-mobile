@@ -275,7 +275,7 @@ private fun CronSheet(
                     value = skill, onValueChange = {}, readOnly = true,
                     label = { Text("Скилл") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menu) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                     colors = autoFieldColors()
                 )
                 ExposedDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -295,7 +295,7 @@ private fun CronSheet(
                         value = agentLabel, onValueChange = {}, readOnly = true,
                         label = { Text("Агент-исполнитель") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = agentMenu) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                         colors = autoFieldColors()
                     )
                     ExposedDropdownMenu(expanded = agentMenu, onDismissRequest = { agentMenu = false }) {

@@ -38,7 +38,7 @@ class AndroidNotificationInbox(
     }
 
     /** Юзер открыл шторку → всё прочитано, бейдж гаснет. */
-    fun markOpened() = synchronized(LOCK) {
+    override fun markOpened() = synchronized(LOCK) {
         prefs(context).edit().putLong(KEY_OPENED, System.currentTimeMillis()).commit()
         _unread.value = 0
     }
@@ -50,10 +50,10 @@ class AndroidNotificationInbox(
     }
 
     /** Очистить только дайджесты (вкладка «Дайджесты»), уведомления не трогая. */
-    fun clearDigests() = removeMatching { it.type == "digest" }
+    override fun clearDigests() = removeMatching { it.type == "digest" }
 
     /** Очистить только уведомления (вкладка «Уведомления»), дайджесты не трогая. */
-    fun clearNotifs() = removeMatching { it.type != "digest" }
+    override fun clearNotifs() = removeMatching { it.type != "digest" }
 
     private fun removeMatching(remove: (NotificationInbox.Item) -> Boolean) = synchronized(LOCK) {
         val updated = load(context).filterNot(remove)

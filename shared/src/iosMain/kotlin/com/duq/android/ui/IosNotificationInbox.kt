@@ -27,7 +27,7 @@ class IosNotificationInbox(
     }
 
     /** Юзер открыл шторку → бейдж гаснет. */
-    fun markOpened() {
+    override fun markOpened() {
         lastOpenedMs = nowMs()
         _unread.value = 0
     }
@@ -40,6 +40,14 @@ class IosNotificationInbox(
     override fun clear() {
         _items.value = emptyList()
         _unread.value = 0
+    }
+
+    override fun clearDigests() {
+        _items.value = _items.value.filterNot { it.type == "digest" }
+    }
+
+    override fun clearNotifs() {
+        _items.value = _items.value.filterNot { it.type != "digest" }
     }
 
     companion object {
