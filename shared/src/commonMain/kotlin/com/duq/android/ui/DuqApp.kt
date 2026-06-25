@@ -40,6 +40,7 @@ import org.koin.compose.koinInject
 sealed class Screen(val route: String) {
     object Shell : Screen("shell")       // bottom-nav оболочка (Чат/Пульт)
     object Settings : Screen("settings")
+    object Profile : Screen("profile")   // панель пользователя (мультиюзер: имя + интеграции)
 }
 
 /** Вкладки нижней навигации. */
@@ -93,7 +94,13 @@ fun DuqApp(audioPlaybackManager: AudioPlaybackManager = koinInject()) {
             )
         }
         composable(Screen.Settings.route) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenProfile = { navController.navigate(Screen.Profile.route) },
+            )
+        }
+        composable(Screen.Profile.route) {
+            ProfileScreen(onBack = { navController.popBackStack() })
         }
     }
 

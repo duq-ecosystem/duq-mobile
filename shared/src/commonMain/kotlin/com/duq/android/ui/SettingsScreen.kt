@@ -15,7 +15,11 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit, repo: SettingsRepository = koinInject()) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    onOpenProfile: () -> Unit = {},
+    repo: SettingsRepository = koinInject(),
+) {
     var silenceTimeout by remember { mutableFloatStateOf(repo.getSilenceTimeoutMsSync().toFloat()) }
 
     Scaffold(
@@ -30,6 +34,10 @@ fun SettingsScreen(onBack: () -> Unit, repo: SettingsRepository = koinInject()) 
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            Button(onClick = onOpenProfile, modifier = Modifier.fillMaxWidth()) {
+                Text("Профиль и интеграции")
+            }
+
             Text("Голос", style = MaterialTheme.typography.titleMedium)
 
             Text("Таймаут тишины: ${(silenceTimeout / 1000).roundToInt()}с")
