@@ -41,6 +41,8 @@ kotlin {
             implementation(libs.kotlinx.datetime)  // dateLabel бесед (мультиплатформенно, вместо java.time)
             // DI (Koin) — выверенная версия 4.1.1
             implementation(libs.koin.core)
+            // koin-core-viewmodel: DSL viewModel{}/viewModelOf в общем графе (viewModelModule).
+            implementation(libs.koin.core.viewmodel)
             implementation(libs.koin.compose)
             // Network (Ktor 3.5.0)
             implementation(libs.ktor.client.core)
