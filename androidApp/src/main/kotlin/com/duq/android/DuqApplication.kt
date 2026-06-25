@@ -10,6 +10,7 @@ import com.duq.android.config.AppSecrets
 import com.duq.android.di.appAndroidModule
 import com.duq.android.di.sharedModules
 import com.duq.android.service.DuqListenerService
+import com.duq.android.update.UpdateWorker
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 
@@ -36,6 +37,9 @@ class DuqApplication : Application() {
         }
         createNotificationChannels()
         startListenerService()
+        // Периодическая фоновая самопроверка обновлений (APK + ядро DUQ). Зависимости
+        // тянет из Koin → enqueue ПОСЛЕ startKoin. KEEP — не сбрасывать таймер при перезапуске.
+        UpdateWorker.schedule(this)
     }
 
     /** Запуск постоянного FGS-присутствия. ACTION_START переводит сервис в foreground. */

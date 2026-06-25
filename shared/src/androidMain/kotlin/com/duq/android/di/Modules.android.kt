@@ -2,7 +2,7 @@ package com.duq.android.di
 
 import android.content.Context
 import com.duq.android.data.SettingsRepository
-import com.duq.android.logging.AndroidLogger
+import com.duq.android.logging.FileLogger
 import com.duq.android.logging.Logger
 import com.duq.android.ui.AndroidAppUpdateController
 import com.duq.android.ui.AndroidAudioFileCache
@@ -19,7 +19,9 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 actual val platformModule: Module = module {
-    single<Logger> { AndroidLogger() }
+    // Файловый логгер: пишет в logcat + ротируемый files/logs/duq.log (release/фон/MIUI,
+    // где logcat третьих-сторон режется). Нужен Context — даёт androidContext().
+    single<Logger> { FileLogger(androidContext()) }
     single<Settings> {
         val ctx: Context = androidContext()
         SharedPreferencesSettings(ctx.getSharedPreferences("duq_prefs", Context.MODE_PRIVATE))

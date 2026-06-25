@@ -3,4 +3,6 @@
     <string name="app_name">DUQ</string>
     <!-- Action на постоянном уведомлении фонового сервиса (DuqNotificationManager). -->
     <string name="stop_service">Остановить</string>
+    <!-- Описание accessibility-сервиса (DuqAccessibilityService) — экран настроек спец. возможностей. -->
+    <string name="accessibility_service_description">Duq uses accessibility service to maintain background voice detection. This allows the app to listen for the wake word even when the screen is off or when using other apps.</string>
 </resources>

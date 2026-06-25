@@ -96,4 +96,6 @@ dependencies {
     // потому на app-классе нужны явные core+android).
     implementation(libs.koin.core)
     implementation(libs.koin.android)
+    // WorkManager: периодическая фоновая самопроверка обновлений (UpdateWorker).
+    implementation(libs.androidx.work.runtime)
 }

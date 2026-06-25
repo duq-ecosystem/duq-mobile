@@ -103,6 +103,19 @@
             android:permission="android.permission.BIND_VOICE_INTERACTION"
             android:exported="true" />
 
+        <!-- Accessibility Service for background operation on MIUI -->
+        <service
+            android:name=".service.DuqAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
         <!-- BootReceiver: при перезагрузке устройства (сервис стартует при открытии app). -->
         <receiver
             android:name=".service.BootReceiver"

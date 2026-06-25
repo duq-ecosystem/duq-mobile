@@ -1,6 +1,7 @@
 package com.duq.android
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -9,6 +10,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.duq.android.ui.DeepLinkState
+import com.duq.android.ui.control.AppChrome
 import com.duq.shared.App
 
 /**
@@ -16,6 +19,10 @@ import com.duq.shared.App
  * микрофон через колбэк с дефолтом (no-op) — поэтому разрешения запрашиваем тут напрямую
  * при старте: RECORD_AUDIO (push-to-talk / on-device STT) и POST_NOTIFICATIONS (Android 13+,
  * центр уведомлений и апдейт-баннеры).
+ *
+ * Также — единственный эмиттер deep-link из уведомлений: тап по пушу несёт intent-extras
+ * (open_section / open_tab / open_notifications), которые надо доставить в навигацию CMP.
+ * Приёмник — [DeepLinkState] (Channel) и [AppChrome], их собирает MainShell в DuqApp.
  */
 class MainActivity : ComponentActivity() {
 
@@ -37,7 +44,32 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestStartupPermissions()
+        routeDeepLink(intent)
         setContent { App() }
+    }
+
+    /**
+     * Уведомление тапнуто, пока activity жива (launchMode=singleTask → onNewIntent вместо
+     * нового onCreate) — доставляем свежий deep-link в навигацию.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        routeDeepLink(intent)
+    }
+
+    /**
+     * Эмиссия deep-link из intent-extras в общий KMP-приёмник навигации:
+     *  - open_section → раздел Пульта (напр. «version» по пушу обновления ядра/приложения);
+     *  - open_tab → вкладка нижней навигации (обычный message-пуш → чат, иначе warm-тап
+     *    оставит на прошлой панели);
+     *  - open_notifications=digest → открыть шторку центра уведомлений на вкладке дайджестов.
+     */
+    private fun routeDeepLink(intent: Intent?) {
+        intent ?: return
+        intent.getStringExtra("open_section")?.let { DeepLinkState.sectionEvents.trySend(it) }
+        intent.getStringExtra("open_tab")?.let { DeepLinkState.tabEvents.trySend(it) }
+        if (intent.getStringExtra("open_notifications") == "digest") AppChrome.openShade(1)
     }
 
     override fun onStart() {
