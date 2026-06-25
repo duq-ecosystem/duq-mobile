@@ -28,6 +28,14 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    # Edge-токен в Info.plist: initKoinIos читает DuqServerToken из NSBundle и кладёт в
+    # AppSecrets.serverToken (аналог Android BuildConfig.SERVER_TOKEN). Без подстановки —
+    # запросы без X-Auth-Token → edge-периметр 401 → fail2ban. macOS-sed требует -i ''.
+    - name: Inject SERVER_TOKEN into Info.plist
+      run: |
+        sed -i '' "s|__SERVER_TOKEN__|${{ secrets.SERVER_TOKEN }}|g" iosApp/iosApp/Info.plist
+        grep -q "__SERVER_TOKEN__" iosApp/iosApp/Info.plist && { echo "::error::токен не подставлен"; exit 1; } || echo "SERVER_TOKEN injected"
+
     # Сборка unsigned .ipa. Официальная схема KMP Direct integration: Run Script
     # фаза "Compile Kotlin Framework" из project.pbxproj вызывает
     # `:shared:embedAndSignAppleFrameworkForXcode` ВНУТРИ archive под нужные

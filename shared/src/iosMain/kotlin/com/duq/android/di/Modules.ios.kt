@@ -14,10 +14,12 @@ import com.duq.android.ui.IosAudioFileCache
 import com.duq.android.ui.IosCoreUpdateNotifier
 import com.duq.android.ui.IosNotificationInbox
 import com.duq.android.ui.NotificationInbox
+import com.duq.android.config.AppSecrets
 import com.russhwolf.settings.NSUserDefaultsSettings
 import com.russhwolf.settings.Settings
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
+import platform.Foundation.NSBundle
 import org.koin.dsl.module
 import platform.Foundation.NSUserDefaults
 
@@ -40,13 +42,16 @@ actual val platformModule: Module = module {
 }
 
 /**
- * iOS-точка инициализации Koin. Swift-сторона (iOSApp) вызывает её на старте до показа
- * UI. AppSecrets (edge-токен/GitHub-токен) на iOS пока не настроены (нет Info.plist-
- * проводки) — остаются пустыми, серверные заголовки/self-update в этом случае выключены.
+ * iOS-точка инициализации Koin. Swift-сторона (iOSApp) вызывает её на старте до показа UI.
+ * Edge-токен (`SERVER_TOKEN`) читается из Info.plist (ключ `DuqServerToken`) — CI подставляет
+ * туда секрет при сборке .ipa (аналог Android BuildConfig.SERVER_TOKEN). Без него запросы к
+ * серверу уходят без `X-Auth-Token` → edge-периметр 401 → fail2ban. githubReleaseToken на iOS
+ * не нужен (self-update идёт через SideStore/App Store, не AppUpdater).
  */
 fun initKoinIos() {
-    // Когда появится iOS-проводка секретов: AppSecrets.serverToken/githubReleaseToken
-    // заполнить из Info.plist здесь, до startKoin.
+    val token = NSBundle.mainBundle.objectForInfoDictionaryKey("DuqServerToken") as? String
+    // Плейсхолдер (если CI не подставил секрет) — игнорируем, токен остаётся пустым.
+    AppSecrets.serverToken = token?.takeIf { it.isNotBlank() && it != "__SERVER_TOKEN__" } ?: ""
     val koinApp = startKoin { modules(sharedModules()) }
     koinApp.koin.get<com.duq.android.network.duq.DuqNodeClient>().start()
 }
