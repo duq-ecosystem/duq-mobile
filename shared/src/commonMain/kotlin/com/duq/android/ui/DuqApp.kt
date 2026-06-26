@@ -71,12 +71,20 @@ object DeepLinkState {
  * Зависимости (плеер чата) — через Koin. Android-EntryPoint/Hilt убраны при переносе.
  */
 @Composable
-fun DuqApp(audioPlaybackManager: AudioPlaybackManager = koinInject()) {
+fun DuqApp(
+    audioPlaybackManager: AudioPlaybackManager = koinInject(),
+    restClient: com.duq.android.network.duq.DuqRestClient = koinInject(),
+) {
     val navController = rememberNavController()
 
     // Глобальный чат-плеер (@Singleton в DI) живёт процесс — initialize один раз, БЕЗ
     // release() на disposal (release необратим — навигация/рекомпозиция убила бы аудио).
     LaunchedEffect(Unit) { audioPlaybackManager.initialize() }
+
+    // Мультиюзер: регистрация устройства при старте приложения (надёжно — НЕ в ленивом
+    // DuqChatClient, который создаётся лишь при открытии чата). Идемпотентно: user_id уже
+    // есть → no-op. Так член семьи заводится сразу при первом запуске.
+    LaunchedEffect(Unit) { runCatching { restClient.ensureRegistered() } }
 
     // Глобальная ⚙️ (из верхней панели любого экрана) ведёт в Настройки. SideEffect, а не
     // LaunchedEffect(Unit): пере-публикует лямбду на КАЖДОЙ рекомпозиции, поэтому после
