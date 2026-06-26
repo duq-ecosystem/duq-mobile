@@ -54,6 +54,17 @@ data class IntegrationsStatus(
     val obsidian: Boolean = false
 )
 
+/** Привязка E2EE-волта юзера (POST /api/integrations/obsidian). */
+@Serializable
+data class ObsidianLinkRequest(
+    @SerialName("user_id") val userId: String,
+    val url: String,
+    @SerialName("mcp_token") val mcpToken: String? = null,
+    val passphrase: String,
+    @SerialName("salt_b64") val saltB64: String,
+    @SerialName("device_id") val deviceId: String? = null
+)
+
 /** Один агент из реестра ядра (GET /duq/api/agents). */
 @Serializable
 data class AgentInfo(

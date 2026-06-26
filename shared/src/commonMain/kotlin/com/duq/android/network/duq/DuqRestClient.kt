@@ -55,6 +55,23 @@ class DuqRestClient(
         return resp.body()
     }
 
+    /** Привязать E2EE-волт юзера (его url/токены/passphrase сохраняются в ядре per-user). */
+    suspend fun linkObsidian(
+        vaultUrl: String,
+        passphrase: String,
+        saltB64: String,
+        mcpToken: String? = null,
+        deviceId: String? = null,
+    ) {
+        val uid = settings.getUserId()
+        if (uid.isBlank()) throw DuqApiException("not registered")
+        val resp = client.post(url("integrations/obsidian")) {
+            contentType(ContentType.Application.Json)
+            setBody(ObsidianLinkRequest(uid, vaultUrl, mcpToken, passphrase, saltB64, deviceId))
+        }
+        if (!resp.status.isSuccess()) throw DuqApiException("linkObsidian ${resp.status}")
+    }
+
     suspend fun sendMessage(
         text: String,
         conversationId: String? = null,

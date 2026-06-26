@@ -87,10 +87,40 @@ fun ProfileScreen(
             Text("Интеграции", style = MaterialTheme.typography.titleMedium)
             IntegrationRow("Obsidian-волт", integrations.obsidian)
             IntegrationRow("Google (почта/календарь)", integrations.google)
-            Text(
-                "Привязка интеграций — со стороны ядра; статус подтянется здесь.",
-                style = MaterialTheme.typography.bodySmall,
-            )
+
+            // Форма привязки своего E2EE-волта: ключи/настройки вводятся здесь и сохраняются
+            // в ядре per-user (vault-тулы юзера потом резолвят его волт по этим данным).
+            var vaultUrl by remember { mutableStateOf("") }
+            var vaultPass by remember { mutableStateOf("") }
+            var vaultSalt by remember { mutableStateOf("") }
+            var vaultToken by remember { mutableStateOf("") }
+            Text("Подключить Obsidian-волт", style = MaterialTheme.typography.titleSmall)
+            OutlinedTextField(vaultUrl, { vaultUrl = it }, label = { Text("URL волта (vault-sync MCP)") },
+                singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(vaultToken, { vaultToken = it }, label = { Text("MCP-токен (опц.)") },
+                singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(vaultPass, { vaultPass = it }, label = { Text("Passphrase (E2EE)") },
+                singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(vaultSalt, { vaultSalt = it }, label = { Text("Salt (base64)") },
+                singleLine = true, modifier = Modifier.fillMaxWidth())
+            Button(
+                onClick = {
+                    scope.launch {
+                        status = runCatching {
+                            rest.linkObsidian(
+                                vaultUrl = vaultUrl.trim(),
+                                passphrase = vaultPass,
+                                saltB64 = vaultSalt.trim(),
+                                mcpToken = vaultToken.trim().ifBlank { null },
+                            )
+                            integrations = rest.integrations().integrations
+                            "Волт подключён"
+                        }.getOrElse { "Ошибка волта: ${it.message}" }
+                    }
+                },
+                enabled = vaultUrl.isNotBlank() && vaultPass.isNotBlank() && vaultSalt.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Привязать волт") }
         }
     }
 }
