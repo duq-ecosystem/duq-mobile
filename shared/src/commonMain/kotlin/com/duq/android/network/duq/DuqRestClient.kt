@@ -14,6 +14,8 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * REST-клиент ядра DUQ на Ktor (multiplatform). Чат: enqueue ([sendMessage]) → ответ
@@ -29,12 +31,17 @@ class DuqRestClient(
     private fun url(path: String) = AppConfig.DUQ_API_BASE_URL + path
     private val bearer get() = "Bearer ${AppConfig.SERVER_TOKEN}"
 
+    // Сериализует регистрацию: без него два конкурентных вызова (LaunchedEffect старта +
+    // повторная композиция) оба видят пустой user_id и дважды POST'ят → дубль юзера в БД.
+    private val regMutex = Mutex()
+
     /**
      * Мультиюзер: гарантирует, что у устройства есть персональный user_id. Нет → регистрирует
-     * члена семьи (POST /api/auth/register method=app) и сохраняет user_id локально. Идемпотентно.
+     * члена семьи (POST /api/auth/register method=app) и сохраняет user_id локально. Идемпотентно
+     * (под Mutex: второй конкурентный вызов после первого уже видит сохранённый user_id).
      */
-    suspend fun ensureRegistered(name: String? = null): String {
-        settings.getUserId().takeIf { it.isNotBlank() }?.let { return it }
+    suspend fun ensureRegistered(name: String? = null): String = regMutex.withLock {
+        settings.getUserId().takeIf { it.isNotBlank() }?.let { return@withLock it }
         val resp = client.post(url("auth/register")) {
             contentType(ContentType.Application.Json)
             setBody(RegisterRequest(name = name ?: settings.getUserName().ifBlank { null }))
@@ -43,7 +50,7 @@ class DuqRestClient(
         val uid = resp.body<RegisterResponse>().userId
             ?: throw DuqApiException("register: no user_id")
         settings.saveUserId(uid)
-        return uid
+        uid
     }
 
     /** Статусы интеграций юзера (google/obsidian) для панели профиля. */
