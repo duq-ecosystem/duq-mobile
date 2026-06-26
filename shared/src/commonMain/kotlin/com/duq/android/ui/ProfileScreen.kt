@@ -67,7 +67,12 @@ fun ProfileScreen(
                     repo.saveUserName(name.trim())
                     scope.launch {
                         status = runCatching {
-                            userId = rest.ensureRegistered(name.trim().ifBlank { null })
+                            // Уже зарегистрирован → обновляем имя в БД (rename); иначе регистрируем.
+                            if (userId.isBlank()) {
+                                userId = rest.ensureRegistered(name.trim().ifBlank { null })
+                            } else {
+                                rest.updateProfile(name.trim())
+                            }
                             integrations = rest.integrations().integrations
                             "Сохранено"
                         }.getOrElse { "Ошибка: ${it.message}" }

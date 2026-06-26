@@ -29,6 +29,13 @@ data class MessageRequest(
     @SerialName("user_id") val userId: String? = null
 )
 
+/** Обновление имени уже зарегистрированного юзера (POST /api/auth/profile) — панель «Сохранить». */
+@Serializable
+data class ProfileUpdateRequest(
+    @SerialName("user_id") val userId: String,
+    val name: String,
+)
+
 /** Регистрация члена семьи из приложения (POST /api/auth/register, method=app). */
 @Serializable
 data class RegisterRequest(

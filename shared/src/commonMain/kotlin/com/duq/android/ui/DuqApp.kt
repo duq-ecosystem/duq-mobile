@@ -73,7 +73,7 @@ object DeepLinkState {
 @Composable
 fun DuqApp(
     audioPlaybackManager: AudioPlaybackManager = koinInject(),
-    restClient: com.duq.android.network.duq.DuqRestClient = koinInject(),
+    settings: com.duq.android.data.SettingsRepository = koinInject(),
 ) {
     val navController = rememberNavController()
 
@@ -81,10 +81,14 @@ fun DuqApp(
     // release() на disposal (release необратим — навигация/рекомпозиция убила бы аудио).
     LaunchedEffect(Unit) { audioPlaybackManager.initialize() }
 
-    // Мультиюзер: регистрация устройства при старте приложения (надёжно — НЕ в ленивом
-    // DuqChatClient, который создаётся лишь при открытии чата). Идемпотентно: user_id уже
-    // есть → no-op. Так член семьи заводится сразу при первом запуске.
-    LaunchedEffect(Unit) { runCatching { restClient.ensureRegistered() } }
+    // Мультиюзер, гейт ПЕРВОГО входа (решение Дениса: никакой авто-регистрации). Нет user_id →
+    // экран регистрации (имя + общий токен системы). Зарегистрировался → дальше в приложение.
+    // Первый зарегистрированный = admin, последующие = public (роль ставит ядро).
+    var registered by remember { mutableStateOf(settings.getUserId().isNotBlank()) }
+    if (!registered) {
+        RegistrationScreen(onRegistered = { registered = true })
+        return
+    }
 
     // Глобальная ⚙️ (из верхней панели любого экрана) ведёт в Настройки. SideEffect, а не
     // LaunchedEffect(Unit): пере-публикует лямбду на КАЖДОЙ рекомпозиции, поэтому после

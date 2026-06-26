@@ -30,6 +30,7 @@ class SettingsRepository(private val settings: Settings) {
         private const val KEY_LAST_REPORTED_LOCATION = "last_reported_location"
         private const val KEY_USER_ID = "duq_user_id"
         private const val KEY_USER_NAME = "duq_user_name"
+        private const val KEY_SERVER_TOKEN = "duq_server_token"
 
         const val DEFAULT_WAKE_WORD_SENSITIVITY = 0.9f
         const val DEFAULT_SILENCE_TIMEOUT_MS = 2000L
@@ -45,6 +46,11 @@ class SettingsRepository(private val settings: Settings) {
     fun saveUserId(id: String) { settings[KEY_USER_ID] = id }
     fun getUserName(): String = settings[KEY_USER_NAME, ""]
     fun saveUserName(name: String) { settings[KEY_USER_NAME] = name }
+
+    // Общий токен системы (edge-token семьи), вводится юзером на экране регистрации при первом
+    // входе — НЕ зашит в билд. Идёт в X-Auth-Token на всех запросах (см. DuqHttpClient).
+    fun getServerToken(): String = settings[KEY_SERVER_TOKEN, ""]
+    fun saveServerToken(token: String) { settings[KEY_SERVER_TOKEN] = token }
 
     /** Last lat/lng reported to DUQ — used to suppress duplicate reports across restarts. */
     fun getLastReportedLocation(): Pair<Double, Double>? {

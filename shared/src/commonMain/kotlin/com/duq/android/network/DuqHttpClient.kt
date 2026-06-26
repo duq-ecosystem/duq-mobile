@@ -1,6 +1,7 @@
 package com.duq.android.network
 
 import com.duq.android.config.AppConfig
+import com.duq.android.data.SettingsRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.DefaultRequest
@@ -25,8 +26,12 @@ val duqJson: Json = Json {
  */
 expect fun platformHttpClient(block: HttpClientConfig<*>.() -> Unit): HttpClient
 
-/** Единый HTTP/WS-клиент DUQ: edge-токен X-Auth-Token на всех запросах + JSON + WebSockets. */
-fun createDuqHttpClient(): HttpClient = platformHttpClient {
+/**
+ * Единый HTTP/WS-клиент DUQ: edge-токен X-Auth-Token на всех запросах + JSON + WebSockets.
+ * Токен берётся ДИНАМИЧЕСКИ из настроек (юзер вводит на экране регистрации при первом входе);
+ * фолбэк на build-time AppConfig.SERVER_TOKEN, если в настройках пусто (совместимость).
+ */
+fun createDuqHttpClient(settings: SettingsRepository): HttpClient = platformHttpClient {
     install(ContentNegotiation) { json(duqJson) }
     install(WebSockets)
     install(HttpTimeout) {
@@ -34,8 +39,9 @@ fun createDuqHttpClient(): HttpClient = platformHttpClient {
         requestTimeoutMillis = AppConfig.READ_TIMEOUT_S * 1000
     }
     install(DefaultRequest) {
-        if (AppConfig.SERVER_TOKEN.isNotEmpty()) {
-            header(AppConfig.SERVER_TOKEN_HEADER, AppConfig.SERVER_TOKEN)
+        val token = settings.getServerToken().ifBlank { AppConfig.SERVER_TOKEN }
+        if (token.isNotEmpty()) {
+            header(AppConfig.SERVER_TOKEN_HEADER, token)
         }
     }
     expectSuccess = false

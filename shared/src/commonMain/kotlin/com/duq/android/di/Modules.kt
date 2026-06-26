@@ -30,7 +30,7 @@ import org.koin.dsl.module
  * полностью и приложение запускается.
  */
 val networkModule = module {
-    single { createDuqHttpClient() }
+    single { createDuqHttpClient(get()) }
     single { DuqRestClient(get(), get()) }
     // DuqChatClient(rest, stt: LocalStt, http, logger) — LocalStt из audioModule, logger из platformModule.
     single { DuqChatClient(get(), get(), get(), get()) }

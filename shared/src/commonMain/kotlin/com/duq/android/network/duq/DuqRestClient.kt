@@ -53,6 +53,18 @@ class DuqRestClient(
         uid
     }
 
+    /** Обновить имя уже зарегистрированного юзера (панель «Сохранить»; ensureRegistered тут
+     *  делал бы early-return и имя не писалось бы в БД). */
+    suspend fun updateProfile(name: String) {
+        val uid = settings.getUserId()
+        if (uid.isBlank()) throw DuqApiException("not registered")
+        val resp = client.post(url("auth/profile")) {
+            contentType(ContentType.Application.Json)
+            setBody(ProfileUpdateRequest(uid, name))
+        }
+        if (!resp.status.isSuccess()) throw DuqApiException("profile ${resp.status}")
+    }
+
     /** Статусы интеграций юзера (google/obsidian) для панели профиля. */
     suspend fun integrations(): IntegrationsResponse {
         val uid = settings.getUserId()
