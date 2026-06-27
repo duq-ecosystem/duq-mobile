@@ -52,6 +52,7 @@ class DuqNodeClient(
     private val chatClient: DuqChatClient,
     private val http: HttpClient,
     private val logger: Logger,
+    private val settings: com.duq.android.data.SettingsRepository,
 ) {
     private companion object {
         const val TAG = "DuqNode"
@@ -88,8 +89,13 @@ class DuqNodeClient(
         var attempt = 0
         while (!isManualStop) {
             _state.value = GatewayConnectionState.CONNECTING
-            val token = AppConfig.SERVER_TOKEN
-            val url = "${AppConfig.DUQ_WS_URL}?token=$token&device_id=$DEVICE_ID"
+            // Токен — введённый юзером (мультиаккаунт), фолбэк на build-time. user_id —
+            // активный аккаунт: сервер ключует phone/reasoning-каналы по нему (мультиюзер),
+            // без него дайджест/уведомления/reasoning не доходят на это устройство.
+            val token = settings.getServerToken().ifBlank { AppConfig.SERVER_TOKEN }
+            val uid = settings.getUserId()
+            val url = "${AppConfig.DUQ_WS_URL}?token=$token&device_id=$DEVICE_ID" +
+                if (uid.isNotBlank()) "&user_id=$uid" else ""
             logger.d(TAG, "node connecting → /duq/ws")
             try {
                 http.webSocket(url) {

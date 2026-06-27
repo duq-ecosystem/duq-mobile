@@ -38,7 +38,7 @@ actual val platformModule: Module = module {
     // деградация (на Android реализация живёт в app/, в shared её нет → там не биндим).
     // DuqNodeClient(executor, chatClient, http, logger): chatClient/http/logger — из графа.
     single<PhoneCommandExecutor> { IosPhoneCommandExecutor(get()) }
-    single { DuqNodeClient(get(), get(), get(), get()) }
+    single { DuqNodeClient(get(), get(), get(), get(), get()) }
 }
 
 /**

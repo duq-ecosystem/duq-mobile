@@ -52,7 +52,7 @@ actual val platformModule: Module = module {
             logger = get(),
         )
     }
-    single { com.duq.android.network.duq.DuqNodeClient(get(), get(), get(), get()) }
+    single { com.duq.android.network.duq.DuqNodeClient(get(), get(), get(), get(), get()) }
 
     // Голосовой флоу фонового сервиса (DuqListenerService): маппер ошибок + обработчик
     // голосовых команд (бип→запись→STT→отправка). Зависимости — из audioModule
