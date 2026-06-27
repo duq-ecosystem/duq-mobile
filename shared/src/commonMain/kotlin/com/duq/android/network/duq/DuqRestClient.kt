@@ -132,7 +132,14 @@ class DuqRestClient(
     }
 
     suspend fun conversations(agentId: String? = null): List<ConversationDto> {
-        val u = url("conversations") + (agentId?.let { "?agent_id=$it" } ?: "")
+        // user_id активного аккаунта ОБЯЗАТЕЛЕН: бэкенд фильтрует историю по нему (мультиюзер).
+        // Без него история приходила пустой (фильтр по пустому owner-sub).
+        val uid = settings.getUserId()
+        val params = buildList {
+            if (uid.isNotBlank()) add("user_id=$uid")
+            if (agentId != null) add("agent_id=$agentId")
+        }
+        val u = url("conversations") + if (params.isNotEmpty()) "?" + params.joinToString("&") else ""
         val resp = client.get(u) { header("Authorization", bearer) }
         if (!resp.status.isSuccess()) throw DuqApiException("conversations ${resp.status}")
         return resp.body()
@@ -164,7 +171,9 @@ class DuqRestClient(
     }
 
     suspend fun messages(convId: String): List<HistoryMsg> {
-        val resp = client.get(url("conversations/$convId/messages")) { header("Authorization", bearer) }
+        val uid = settings.getUserId()
+        val u = url("conversations/$convId/messages") + if (uid.isNotBlank()) "?user_id=$uid" else ""
+        val resp = client.get(u) { header("Authorization", bearer) }
         if (!resp.status.isSuccess()) throw DuqApiException("messages ${resp.status}")
         return resp.body()
     }
