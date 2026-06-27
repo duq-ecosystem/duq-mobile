@@ -34,7 +34,12 @@ import com.duq.android.network.duq.DuqRestClient
 import com.duq.android.network.duq.FamilyMember
 import com.duq.android.network.duq.IntegrationsResponse
 import com.duq.android.ui.theme.DuqColors
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.koin.compose.koinInject
 
 /**
@@ -303,10 +308,7 @@ private fun StatusChip(connected: Boolean) {
 private fun ObsidianCard(connected: Boolean, onLinked: () -> Unit, rest: DuqRestClient) {
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
-    var url by remember { mutableStateOf("") }
-    var pass by remember { mutableStateOf("") }
-    var salt by remember { mutableStateOf("") }
-    var token by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
     var err by remember { mutableStateOf("") }
 
     Column(
@@ -332,28 +334,24 @@ private fun ObsidianCard(connected: Boolean, onLinked: () -> Unit, rest: DuqRest
         AnimatedVisibility(expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "URL и MCP-токен — от твоего vault-sync. Passphrase и Salt — E2EE-ключ волта " +
-                        "из настроек плагина Obsidian VaultSync (тот же, чем шифруется синк).",
+                    "На компьютере открой плагин Obsidian VaultSync → настройки → «Copy code for DUQ» " +
+                        "и вставь код сюда. Больше ничего вводить не нужно.",
                     style = MaterialTheme.typography.bodySmall, color = DuqColors.textDim,
                 )
-                OutlinedTextField(url, { url = it }, label = { Text("URL волта (vault-sync MCP)") },
-                    singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(token, { token = it }, label = { Text("MCP-токен") },
-                    singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(pass, { pass = it }, label = { Text("Passphrase (из плагина VaultSync)") },
-                    singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(salt, { salt = it }, label = { Text("Salt (из плагина VaultSync)") },
+                OutlinedTextField(code, { code = it }, label = { Text("Код из плагина VaultSync") },
                     singleLine = true, modifier = Modifier.fillMaxWidth())
                 Button(
                     onClick = {
                         scope.launch {
                             err = runCatching {
-                                rest.linkObsidian(url.trim(), pass, salt.trim(), token.trim().ifBlank { null })
-                                expanded = false; onLinked(); ""
+                                val key = parseVaultPairingCode(code)
+                                    ?: throw IllegalArgumentException("Неверный код — скопируй его заново в плагине")
+                                rest.linkObsidian("", key.first, key.second)
+                                expanded = false; code = ""; onLinked(); ""
                             }.getOrElse { "Ошибка: ${it.message}" }
                         }
                     },
-                    enabled = url.isNotBlank() && pass.isNotBlank() && salt.isNotBlank(),
+                    enabled = code.isNotBlank(),
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Привязать волт") }
                 if (err.isNotBlank()) {
@@ -363,4 +361,22 @@ private fun ObsidianCard(connected: Boolean, onLinked: () -> Unit, rest: DuqRest
             }
         }
     }
+}
+
+/**
+ * Декодирует pairing-код из плагина VaultSync (`duq1:` + base64(UTF-8 JSON {v,p,s})).
+ * Возвращает (passphrase, salt_b64) или null, если код битый. Транспорт волта (url/токен)
+ * юзеру вводить не нужно — сервер берёт общие env-дефолты (см. VaultClient.from_creds).
+ */
+@OptIn(ExperimentalEncodingApi::class)
+private fun parseVaultPairingCode(raw: String): Pair<String, String>? {
+    val body = raw.trim().removePrefix("duq1:").trim()
+    if (body.isEmpty()) return null
+    return runCatching {
+        val json = Base64.decode(body).decodeToString()
+        val obj = Json.parseToJsonElement(json).jsonObject
+        val p = obj["p"]?.jsonPrimitive?.content.orEmpty()
+        val s = obj["s"]?.jsonPrimitive?.content.orEmpty()
+        if (p.isBlank() || s.isBlank()) null else p to s
+    }.getOrNull()
 }
