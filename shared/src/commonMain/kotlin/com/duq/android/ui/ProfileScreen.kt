@@ -266,6 +266,15 @@ private fun GoogleCard(connected: Boolean, rest: DuqRestClient) {
             StatusChip(connected)
         }
         if (!connected) {
+            Text(
+                "Создавать ничего в Google не нужно. Нажми «Войти через Google» — откроется " +
+                    "браузер. Выбери свой Google-аккаунт и нажми «Разрешить»: DUQ получит доступ " +
+                    "к твоей почте, календарю и задачам (доступ только у тебя, токены личные). " +
+                    "Если Google покажет «приложение не проверено» — нажми «Дополнительно» → " +
+                    "«Перейти», это нормально. Потом вернись в DUQ и снова открой профиль — " +
+                    "статус станет «подключено». Дальше просто пользуйся — повторно входить не надо.",
+                style = MaterialTheme.typography.bodySmall, color = DuqColors.textDim,
+            )
             Button(
                 onClick = {
                     scope.launch {
