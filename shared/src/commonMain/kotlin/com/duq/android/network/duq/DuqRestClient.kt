@@ -181,7 +181,11 @@ class DuqRestClient(
     // ───────── Скиллы ─────────
 
     suspend fun listSkills(): List<SkillDto> {
-        val resp = client.get(url("skills"))
+        // user_id ОБЯЗАТЕЛЕН: бэкенд фильтрует per-user скиллы (heartbeat-<uid>) по нему —
+        // иначе юзер видит и чужие (мнимые «дубли»).
+        val uid = settings.getUserId()
+        val u = url("skills") + if (uid.isNotBlank()) "?user_id=$uid" else ""
+        val resp = client.get(u)
         if (!resp.status.isSuccess()) throw DuqApiException("skills ${resp.status}")
         return resp.body<SkillListDto>().skills ?: emptyList()
     }
@@ -210,15 +214,22 @@ class DuqRestClient(
     // ───────── Крон-задачи ─────────
 
     suspend fun listCronTasks(): List<CronTaskDto> {
-        val resp = client.get(url("scheduler/tasks"))
+        // user_id ОБЯЗАТЕЛЕН: бэкенд фильтрует кроны по нему — иначе юзер видит чужие
+        // (Лерин heartbeat-крон у Дениса и т.п. = мнимые «дубли»).
+        val uid = settings.getUserId()
+        val u = url("scheduler/tasks") + if (uid.isNotBlank()) "?user_id=$uid" else ""
+        val resp = client.get(u)
         if (!resp.status.isSuccess()) throw DuqApiException("scheduler ${resp.status}")
         return resp.body<CronTaskListDto>().tasks ?: emptyList()
     }
 
     suspend fun createCronTask(name: String, cron: String, skill: String, timezone: String, agentId: String = "main") {
+        // user_id создателя: иначе бэкенд вешает крон на первого админа (мультиюзер-баг —
+        // крон Леры уезжал бы Денису).
+        val uid = settings.getUserId().ifBlank { null }
         val resp = client.post(url("scheduler/tasks")) {
             contentType(ContentType.Application.Json)
-            setBody(CronCreateBody(name, cron, skill, timezone, agentId))
+            setBody(CronCreateBody(name, cron, skill, timezone, agentId, uid))
         }
         if (!resp.status.isSuccess()) throw DuqApiException("createCron ${resp.status}")
     }

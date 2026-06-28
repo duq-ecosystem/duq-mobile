@@ -55,7 +55,8 @@ data class CronCreateBody(
     val cron: String,
     val skill: String,
     val timezone: String,
-    @SerialName("agent_id") val agentId: String = "main"
+    @SerialName("agent_id") val agentId: String = "main",
+    @SerialName("user_id") val userId: String? = null
 )
 
 @Serializable
