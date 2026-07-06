@@ -79,8 +79,11 @@ class DuqNodeClient(
         isManualStop = true
         runLoop?.cancel()
         runLoop = null
-        scope.launch { runCatching { session?.close() } }
+        // Ссылку фиксируем ДО обнуления поля: корутина закрытия стартует позже и читала бы
+        // уже null → close не вызывался бы (сокет закрывала только отмена runLoop).
+        val s = session
         session = null
+        if (s != null) scope.launch { runCatching { s.close() } }
         _state.value = GatewayConnectionState.DISCONNECTED
     }
 

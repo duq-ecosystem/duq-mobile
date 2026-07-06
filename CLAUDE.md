@@ -30,7 +30,7 @@ iosApp/                         # Xcode-проект (Swift) — хостит Ma
 ## ⛔ Рабочие версии (выстрадано — НЕ менять без причины)
 - **Kotlin 2.3.20** (НЕ 2.2.x: CMP 1.11.1 iOS klib собран 2.3.20, иначе «incompatible ABI» на iosArm64).
 - CMP **1.11.1**, AGP 8.7.3, Gradle 8.9, Ktor 3.5.0, Koin 4.1.1, multiplatform-settings 1.2.0.
-- НЕ использовать kotlinx-datetime (`Clock.System` не резолвится на iOS klib под K2.3.20) — время через `expect fun nowMillis(): Long`.
+- kotlinx-datetime 0.6.2 подключён (dateLabel бесед: Instant/LocalDate/TimeZone — ок), но НЕ `Clock.System` (не резолвится на iOS klib под K2.3.20) — «сейчас» только через `expect fun nowMillis(): Long`.
 - `compose.components.uiToolingPreview` НЕ в commonMain (нет на iosArm64).
 - Android lint: `lint { checkReleaseBuilds=false }` (lintVital крашит под K2.3).
 - Версии jetbrains-navigation/lifecycle — выверять по Maven перед добавлением, не выдумывать.

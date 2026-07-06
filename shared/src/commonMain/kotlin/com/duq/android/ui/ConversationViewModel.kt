@@ -4,12 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duq.android.audio.AudioPlaybackManager
 import com.duq.android.audio.AudioRecorderInterface
-import com.duq.android.audio.BeepPlayer
-import com.duq.android.audio.LocalStt
 import com.duq.android.audio.LocalTts
 import com.duq.android.audio.StreamingTtsController
 import com.duq.android.config.AppConfig
-import com.duq.android.data.SettingsRepository
 import com.duq.android.data.model.Message
 import com.duq.android.data.model.MessageRole
 import com.duq.android.data.model.VoicePhase
@@ -61,9 +58,6 @@ class ConversationViewModel(
     private val ttsLocal: LocalTts,
     private val ttsClient: TtsClient,
     private val streamingTts: StreamingTtsController,
-    @Suppress("unused") private val sttLocal: LocalStt,
-    @Suppress("unused") private val beepPlayer: BeepPlayer,
-    @Suppress("unused") private val settings: SettingsRepository,
     private val notificationInbox: NotificationInbox,
     private val appUpdater: AppUpdateController,
     private val audioFileCache: AudioFileCache,
@@ -222,6 +216,11 @@ class ConversationViewModel(
                     }
                     ChatStepReducer.markAllStepsDone(upd, rid)
                 }
+                // Ответ доставлен — тёрн фактически завершён. Если TEXT_DONE потеряется
+                // (реконнект WS), без этого спиннер жил бы дальше, а вотчдог через 90с
+                // дописал бы «Ответ не пришёл» ПОД уже показанным ответом.
+                disarmReplyWatchdog()
+                _isProcessing.value = false
                 // Модель решила озвучить → синтез TTS на пузыре этого тёрна.
                 if (msg.voice) speakReply(rid, ReplyText.clean(msg.content))
                 return
@@ -536,13 +535,10 @@ class ConversationViewModel(
                         streamingTts.start(event.runId)
                     }
                 }
-                // Prefer the server's cumulative message text (authoritative, robust to
-                // any reordering); fall back to accumulating deltas if it's absent.
-                val cumulative = event.fullText?.also { streamBuffer.clear(); streamBuffer.append(it) }
-                    ?: run {
-                        val delta = event.deltaText ?: return
-                        streamBuffer.append(delta); streamBuffer.toString()
-                    }
+                // Стрим кумулятивный: каждая дельта несёт ВЕСЬ текст (авторитетно, стойко
+                // к реордеру). streamBuffer хранит последний кумулятив для финал-фолбэка.
+                val cumulative = event.fullText ?: return
+                streamBuffer.clear(); streamBuffer.append(cumulative)
                 val live = ReplyText.clean(cumulative)
                 _messages.update { msgs ->
                     msgs.map { if (it.id == event.runId) it.copy(content = live) else it }
@@ -626,6 +622,9 @@ class ConversationViewModel(
         // runId) заполнит пузырь. Без deltas у ядра это единственный способ показать live.
         val runId = randomId()
         currentRunId = runId
+        // Буфер может держать хвост прерванного прошлого стрима: delta-обработчик чистит его
+        // только при СМЕНЕ runId, а здесь runId уже выставлен — чистим явно.
+        streamBuffer.clear()
         _messages.update {
             it + Message(role = MessageRole.USER, content = text) +
                 Message(id = runId, role = MessageRole.ASSISTANT, content = "", isStreaming = true)
@@ -729,8 +728,9 @@ class ConversationViewModel(
 
     /** Synthesize + play the reply audio (contextual TTS for voice turns only). */
     // Уже озвученные ответы — чтобы chat.message-voice и task-result-voice (два пути
-    // доставки решения модели) не синтезировали один ответ дважды.
-    private val spokenMsgIds = mutableSetOf<String>()
+    // доставки решения модели) не синтезировали один ответ дважды. Bounded — как остальные
+    // дедуп-наборы (finalizedRunIds/seenServerMsgIds): не растёт бесконечно за сессию.
+    private val spokenMsgIds = BoundedKeySet(maxSize = 128)
 
     // Дедуп ПО КОНТЕНТУ: один физический ответ приходит двумя путями (REST-final с runId
     // и WS-push с серверным messageId) — РАЗНЫЕ id, spokenMsgIds их не свяжет → двойной

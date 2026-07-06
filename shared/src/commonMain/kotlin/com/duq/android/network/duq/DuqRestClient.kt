@@ -29,7 +29,10 @@ class DuqRestClient(
 ) {
 
     private fun url(path: String) = AppConfig.DUQ_API_BASE_URL + path
-    private val bearer get() = "Bearer ${AppConfig.SERVER_TOKEN}"
+
+    // Тот же динамический edge-токен, что и в X-Auth-Token/WS (введённый юзером при входе,
+    // фолбэк на build-time) — иначе Bearer расходился бы с остальным стеком при своём токене.
+    private val bearer get() = "Bearer ${settings.getServerToken().ifBlank { AppConfig.SERVER_TOKEN }}"
 
     // Сериализует вход: без него два конкурентных вызова могли бы оба POST'нуть.
     private val regMutex = Mutex()

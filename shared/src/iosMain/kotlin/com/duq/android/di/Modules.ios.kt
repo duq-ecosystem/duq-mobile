@@ -34,9 +34,9 @@ actual val platformModule: Module = module {
     single<AppUpdateController> { IosAppUpdateController(get()) }
     single<CoreUpdateNotifier> { IosCoreUpdateNotifier(get()) }
 
-    // Phone-control (bot → телефон) — iOS-only в графе: IosPhoneCommandExecutor —
-    // деградация (на Android реализация живёт в app/, в shared её нет → там не биндим).
-    // DuqNodeClient(executor, chatClient, http, logger): chatClient/http/logger — из графа.
+    // Phone-control (bot → телефон): IosPhoneCommandExecutor — деградация (нативные
+    // команды камеры/экрана на iOS не реализованы; presence и чат/reasoning-стрим работают).
+    // Android-аналог биндится в Modules.android.kt (полный AndroidPhoneCommandExecutor).
     single<PhoneCommandExecutor> { IosPhoneCommandExecutor(get()) }
     single { DuqNodeClient(get(), get(), get(), get(), get()) }
 }

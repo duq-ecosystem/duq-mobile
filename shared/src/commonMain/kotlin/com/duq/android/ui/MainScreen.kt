@@ -458,7 +458,11 @@ fun MainScreen(
                             .scale(btnScale)
                             .clip(CircleShape)
                             .background(btnColor)
-                            .pointerInput(textInput, audioPlaybackInfo.state) {
+                            // pointerInput(Unit): textInput/audioPlaybackInfo — snapshot-state,
+                            // читаются актуальными внутри жеста. Ключи (textInput/state) тут
+                            // РЕСТАРТОВАЛИ жест посреди удержания (смена state плеера во время
+                            // hold) → startVoiceInput без stopVoiceInput — «застрявшая» запись.
+                            .pointerInput(Unit) {
                                 awaitEachGesture {
                                     awaitFirstDown()
                                     // Удержание > 220мс запускает запись (через корутину, т.к.

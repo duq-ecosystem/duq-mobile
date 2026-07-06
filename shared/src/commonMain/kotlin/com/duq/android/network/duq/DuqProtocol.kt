@@ -156,11 +156,12 @@ data class DuqIncomingMessage(
 
 // ── Внутренние render-ready типы (не wire-DTO, не сериализуются) ──
 
-/** Терминальное (или стрим-) событие ответа, которое рендерит ConversationViewModel. */
+/** Терминальное (или стрим-) событие ответа, которое рендерит ConversationViewModel.
+ *  Стрим ядра КУМУЛЯТИВНЫЙ: [fullText] на каждой дельте несёт весь текст с начала ответа
+ *  (инкрементальных дельт в протоколе нет). */
 data class OcChatEvent(
     val runId: String,
     val state: String,          // "delta" | "final" | "error" | "aborted"
-    val deltaText: String? = null,
     val fullText: String? = null,
     val errorMessage: String? = null
 )

@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Постоянный foreground-сервис — держит WebSocket-присутствие и чат-клиент ЖИВЫМИ в фоне,
@@ -63,9 +62,6 @@ class DuqListenerService : Service(), VoiceServiceController {
 
     private val binder = LocalBinder()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    // Накопитель стриминг-текста по runId для фоновых уведомлений.
-    private val messageBuffers = ConcurrentHashMap<String, StringBuilder>()
 
     private val _state = MutableStateFlow(DuqState.IDLE)
     override val state: StateFlow<DuqState> = _state
@@ -129,26 +125,15 @@ class DuqListenerService : Service(), VoiceServiceController {
         androidx.core.content.ContextCompat.checkSelfPermission(this, permission) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
 
-    /** Чат-события — буферим текст, показываем уведомление, когда app в фоне. */
+    /** Чат-события: финал ответа → системное уведомление, когда app в фоне. Стрим несёт
+     *  КУМУЛЯТИВНЫЙ текст (TEXT_DELTA/TEXT_DONE → fullText), локально копить нечего. */
     private fun collectIncomingMessages() {
         serviceScope.launch {
             gatewayClient.chatEvents.collect { event ->
-                when (event.state) {
-                    "delta" -> {
-                        val text = event.deltaText ?: return@collect
-                        messageBuffers.getOrPut(event.runId) { StringBuilder() }.append(text)
-                    }
-                    "final" -> {
-                        // Предпочитаем авторитетный кумулятивный текст сервера (как в UI);
-                        // фолбэк — локально накопленный delta-буфер.
-                        val raw = event.fullText ?: messageBuffers[event.runId]?.toString()
-                        messageBuffers.remove(event.runId)
-                        val text = raw?.let { ReplyText.clean(it) } ?: return@collect
-                        if (text.isNotBlank() && !MainActivity.isInForeground) {
-                            notificationManager.showMessageNotification(text)
-                        }
-                    }
-                    "error", "aborted" -> messageBuffers.remove(event.runId)
+                if (event.state != "final") return@collect
+                val text = event.fullText?.let { ReplyText.clean(it) } ?: return@collect
+                if (text.isNotBlank() && !MainActivity.isInForeground) {
+                    notificationManager.showMessageNotification(text)
                 }
             }
         }

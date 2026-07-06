@@ -46,6 +46,10 @@ class StreamingTts(
     @Volatile
     private var track: AudioTrack? = null
 
+    // Захват/сброс пары (track, playingNow) — атомарно: cancel()+start() нового прогона не
+    // ждёт завершения старого job, и его finally не должен стоптать поля нового прогона.
+    private val trackLock = Any()
+
     // Идёт ли реальное проигрывание звука (AudioTrack играет/дренится). Отдельно от activeRunId:
     // activeRunId гаснет на finish(), а звук ещё доигрывается в консьюмере. Кнопка плеера по
     // этому флагу понимает, что догон озвучивает СЕЙЧАС → тап = СТОП (а не второе проигрывание).
@@ -88,12 +92,16 @@ class StreamingTts(
                     }
                 } finally { pcmQueue.close() }
             }
+            // Трек принадлежит ЭТОМУ прогону: cancel() нового start() не ждёт завершения
+            // старого job — finally старого не должен release'ить/обнулять трек нового
+            // (гонка cancel→start), поэтому в finally чистим только СВОЙ myTrack.
+            var myTrack: AudioTrack? = null
             try {
                 for (s in pcmQueue) {
-                    val t = track ?: run {
+                    val t = myTrack ?: run {
                         sampleRate = s.sampleRate
-                        playingNow = true
-                        newTrack(sampleRate).apply { play() }.also { track = it }
+                        newTrack(sampleRate).apply { play() }
+                            .also { synchronized(trackLock) { myTrack = it; track = it; playingNow = true } }
                             .also { logger.d(TAG, "AudioTrack play sr=$sampleRate") }
                     }
                     // WRITE_BLOCKING явно; проверяем возврат — при ошибке (потеря focus/HAL)
@@ -105,7 +113,7 @@ class StreamingTts(
                 }
                 // дать доиграть остаток буфера (write вернулся, но звук ещё проигрывается).
                 // Ограничиваем ожидание длительностью аудио + 1с — защита от вечного цикла.
-                track?.let { t ->
+                myTrack?.let { t ->
                     val maxWaitMs = totalFrames.toLong() * 1000 / maxOf(1, sampleRate) + 1000
                     var waited = 0L
                     while (isActive && waited < maxWaitMs &&
@@ -121,9 +129,14 @@ class StreamingTts(
                 logger.e(TAG, "догон stream error: ${e.message}")
             } finally {
                 producer.cancel()
-                track?.let { try { it.stop(); it.release() } catch (_: Exception) {} }
-                track = null
-                playingNow = false
+                myTrack?.let { try { it.stop(); it.release() } catch (_: Exception) {} }
+                // Сбрасываем общие поля, только если их ещё не перехватил новый прогон.
+                synchronized(trackLock) {
+                    if (track === myTrack) {
+                        track = null
+                        playingNow = false
+                    }
+                }
             }
             // единый WAV для replay (мгновенный, с длительностью) — НЕ выполнится при отмене (CE выше)
             if (replay.isNotEmpty() && sampleRate > 0) playback.cacheStreamedAudio(runId, replay, sampleRate)

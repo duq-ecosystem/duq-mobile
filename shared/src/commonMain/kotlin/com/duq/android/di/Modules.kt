@@ -20,14 +20,13 @@ import org.koin.dsl.module
  *  - [audioModule]   — expect/actual (audio-реализации к интерфейсам: android — нативные,
  *                       ios — деградации; Context/Logger приходят из платформенного графа).
  *  - [viewModelModule] — общий (commonMain): 5 экранных ViewModel (резолвятся koinViewModel()).
- *  - [platformModule] — expect/actual (Logger/Settings/SettingsRepository + UI-мосты;
- *                       на iOS дополнительно PhoneCommandExecutor + DuqNodeClient).
+ *  - [platformModule] — expect/actual (Logger/Settings/SettingsRepository + UI-мосты +
+ *                       PhoneCommandExecutor/DuqNodeClient: android — полный нативный
+ *                       AndroidPhoneCommandExecutor, ios — IosPhoneCommandExecutor-деградация).
  *
- * ⚠ DuqNodeClient/PhoneCommandExecutor — НЕ в общем графе: Android-реализация
- * PhoneCommandExecutor живёт в app/ (референс, Hilt), в shared её нет, поэтому на Android
- * биндить нечем. На iOS они биндятся в iosMain (IosPhoneCommandExecutor — деградация).
- * Ни один из 5 ViewModel/экранов DuqNodeClient не использует, так что граф резолвится
- * полностью и приложение запускается.
+ * DuqNodeClient/PhoneCommandExecutor — в платформенных модулях (не в общем): их реализации
+ * платформенные. Стартует DuqNodeClient платформа: Android — DuqListenerService.onCreate,
+ * iOS — initKoinIos().
  */
 val networkModule = module {
     single { createDuqHttpClient(get()) }
@@ -52,9 +51,6 @@ val viewModelModule = module {
             ttsLocal = get(),
             ttsClient = get(),
             streamingTts = get(),
-            sttLocal = get(),
-            beepPlayer = get(),
-            settings = get(),
             notificationInbox = get(),
             appUpdater = get(),
             audioFileCache = get(),
