@@ -29,25 +29,29 @@ jobs:
       run: chmod +x gradlew
 
     # Quality-gate: detekt (статический анализ Kotlin, SAST/lint) ПЕРЕД сборкой.
-    # Нет baseline (первый прогон) → генерим его (фиксируем легаси-долг) и не валим
-    # сборку; SARIF-отчёт грузится в артефакты/Security-таб. Когда baseline
-    # закоммичен — detekt валит CI на ЛЮБОЙ новой проблеме (ratchet).
+    # Прогон НАЧИСТО (без предгенерации baseline) — отчёт показывает РЕАЛЬНОЕ число
+    # findings. continue-on-error: пока baseline не закоммичен, не валим сборку —
+    # смотрим объём легаси-долга. baseline.xml грузится артефактом → фиксируем в репо
+    # (ratchet: после коммита baseline detekt валит CI на любой НОВОЙ проблеме).
     - name: Detekt (Kotlin SAST/lint)
       run: |
-        if [ ! -f config/detekt/baseline.xml ]; then
-          echo "::notice::detekt baseline отсутствует — генерирую (легаси-долг фиксируется)"
-          ./gradlew detektBaseline --no-daemon || true
-          echo "::warning::Закоммить config/detekt/baseline.xml — тогда detekt станет блокирующим gate"
-        fi
         ./gradlew detekt --no-daemon
+        echo "----- detekt findings summary -----"
+        grep -h "number of total code smells" **/build/reports/detekt/detekt.md 2>/dev/null || true
       continue-on-error: true
 
-    - name: Upload detekt reports
+    - name: Generate detekt baseline (для фиксации в репо)
+      if: always()
+      run: ./gradlew detektBaseline --no-daemon || true
+
+    - name: Upload detekt reports + baseline
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: detekt-reports
-        path: '**/build/reports/detekt/*'
+        path: |
+          **/build/reports/detekt/*
+          config/detekt/baseline.xml
         if-no-files-found: ignore
 
     # versionCode непрерывен с монорепо (последний был 319): сдвиг +400 → первый билд > 319,
