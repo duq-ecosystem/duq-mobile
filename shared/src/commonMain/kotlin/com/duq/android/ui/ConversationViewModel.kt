@@ -25,7 +25,6 @@ import com.duq.android.util.ReplyText
 import com.duq.android.util.nowMillis
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -74,10 +73,6 @@ class ConversationViewModel(
 
     private companion object {
         const val TAG = "ConversationViewModel"
-        // No reply (not even a tool step) within this window after the last sign of
-        // life ⇒ surface a timeout message rather than spin forever. Generous because
-        // a cold memory-recall + model turn can legitimately take ~30-60s.
-        const val REPLY_TIMEOUT_MS = 90_000L
     }
 
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
@@ -144,33 +139,10 @@ class ConversationViewModel(
     private var currentRunId: String? = null
     private val streamBuffer = StringBuilder()
 
-    // Reply watchdog: arms on send and re-arms on every sign of life (delta / tool
-    // step). If NOTHING terminal (final/error/aborted) arrives within the window —
-    // e.g. the gateway dropped the run, a sessionKey mismatch silently swallowed the
-    // frames, or the model hung — we surface a clear message instead of spinning
-    // forever. The bug this guards: a stuck spinner with no explanation (06-19).
-    private var replyWatchdog: Job? = null
-
-    private fun armReplyWatchdog() {
-        replyWatchdog?.cancel()
-        _isProcessing.value = true
-        replyWatchdog = viewModelScope.launch {
-            delay(REPLY_TIMEOUT_MS)
-            logger.w(TAG, "reply watchdog fired — no terminal chat event in ${REPLY_TIMEOUT_MS}ms")
-            currentRunId = null; streamBuffer.clear(); _isProcessing.value = false
-            _messages.update { msgs ->
-                val cleared = msgs.map { if (it.isStreaming) it.copy(isStreaming = false) else it }
-                cleared + Message(
-                    role = MessageRole.ASSISTANT,
-                    content = "⚠️ Ответ не пришёл за ${REPLY_TIMEOUT_MS / 1000} с — сервер не прислал результат " +
-                        "(возможен обрыв сессии или зависший прогон). Повтори запрос; если повторяется — проверь gateway."
-                )
-            }
-            _error.value = DuqError.NetworkError("Reply timeout (${REPLY_TIMEOUT_MS / 1000}s)")
-        }
-    }
-
-    private fun disarmReplyWatchdog() { replyWatchdog?.cancel(); replyWatchdog = null }
+    // Reply-таймаут/watchdog ВЫРЕЗАН ЦЕЛИКОМ (2026-07-09, решение Дениса): агент ВСЕГДА
+    // отвечает (доставка гарантированная — at-least-once client-ack на /ws; надёжность
+    // ответа обеспечивается на бэкенде). Никакого таймаута ожидания ответа в клиенте нет.
+    // Спиннер обработки управляется напрямую через _isProcessing на отправке/получении.
 
     // Runs that already reached "final"/"aborted". Late frames for them (possible on
     // any reorder) must be ignored so they don't resurrect an orphan bubble. Bounded
@@ -216,10 +188,7 @@ class ConversationViewModel(
                     }
                     ChatStepReducer.markAllStepsDone(upd, rid)
                 }
-                // Ответ доставлен — тёрн фактически завершён. Если TEXT_DONE потеряется
-                // (реконнект WS), без этого спиннер жил бы дальше, а вотчдог через 90с
-                // дописал бы «Ответ не пришёл» ПОД уже показанным ответом.
-                disarmReplyWatchdog()
+                // Ответ доставлен — тёрн завершён, снимаем спиннер обработки.
                 _isProcessing.value = false
                 // Модель решила озвучить → синтез TTS на пузыре этого тёрна.
                 if (msg.voice) speakReply(rid, ReplyText.clean(msg.content))
@@ -320,7 +289,7 @@ class ConversationViewModel(
         // озвучиться по залипшему lastInputWasVoice/pendingVoiceReplyRunId.
         pendingVoiceReplyRunId = null
         lastInputWasVoice = false
-        disarmReplyWatchdog(); _isProcessing.value = false
+        _isProcessing.value = false
         _activeConversationTitle.value = _agents.value.firstOrNull { it.id == agentId }?.displayName ?: "DUQ"
         viewModelScope.launch {
             val list = runCatching { gatewayClient.listConversations(agentId) }.getOrElse {
@@ -410,7 +379,7 @@ class ConversationViewModel(
         _activeConversationTitle.value = _conversations.value.firstOrNull { it.id == id }?.dateLabel ?: "Чат"
         _messages.value = emptyList()
         currentRunId = null
-        disarmReplyWatchdog(); _isProcessing.value = false
+        _isProcessing.value = false
         viewModelScope.launch {
             val history = runCatching { gatewayClient.loadMessages(id) }.getOrElse {
                 logger.e(TAG, "loadMessages($id) failed: ${it.message}", it); emptyList()
@@ -429,7 +398,7 @@ class ConversationViewModel(
         _activeConversationTitle.value = "Новый чат"
         _messages.value = emptyList()
         currentRunId = null
-        disarmReplyWatchdog(); _isProcessing.value = false
+        _isProcessing.value = false
     }
 
     /**
@@ -482,9 +451,8 @@ class ConversationViewModel(
         val finished = step.phase == "end" || step.status == "completed" || step.status == "failed"
         // the engine emits up to two items per call (tool + its command/patch detail)
         // sharing one toolCallId — itemId is "tool:<callId>"/"command:<callId>". Key
-        // by the callId so the pair collapses into one step. A tool step is a sign of
-        // life too — keep the watchdog from firing on it.
-        if (!finished) armReplyWatchdog()
+        // by the callId so the pair collapses into one step. Идёт tool-шаг → спиннер вкл.
+        if (!finished) _isProcessing.value = true
         val callId = step.itemId.substringAfter(':', step.itemId)
         _messages.update { msgs ->
             ChatStepReducer.upsertStep(msgs, step.runId, callId, stepLabel(step), step.kind, finished)
@@ -514,8 +482,8 @@ class ConversationViewModel(
         if (finalizedRunIds.contains(event.runId)) return
         when (event.state) {
             "delta" -> {
-                // Sign of life — push the watchdog out while text keeps streaming.
-                armReplyWatchdog()
+                // Идёт стрим текста → спиннер обработки включён.
+                _isProcessing.value = true
                 if (currentRunId != event.runId) {
                     currentRunId = event.runId
                     streamBuffer.clear()
@@ -548,7 +516,7 @@ class ConversationViewModel(
                 if (event.runId == pendingVoiceReplyRunId) streamingTts.feed(event.runId, cumulative)
             }
             "final" -> {
-                disarmReplyWatchdog()
+                _isProcessing.value = false
                 val finalRaw = event.fullText ?: streamBuffer.toString()
                 val finalContent = ReplyText.clean(finalRaw)
                 currentRunId = null; streamBuffer.clear(); _isProcessing.value = false
@@ -599,7 +567,7 @@ class ConversationViewModel(
                 }
             }
             "aborted", "error" -> {
-                disarmReplyWatchdog()
+                _isProcessing.value = false
                 val errText = event.errorMessage ?: "Error"
                 currentRunId = null; streamBuffer.clear(); _isProcessing.value = false
                 finalizedRunIds.add(event.runId)
@@ -641,10 +609,10 @@ class ConversationViewModel(
                     text, runId, conversationId = convId, newConversation = isNew,
                     agentId = _activeAgentId.value,
                 )
-                armReplyWatchdog()
+                _isProcessing.value = true
             } catch (e: Exception) {
                 logger.e(TAG, "sendMessage failed: ${e.message}")
-                disarmReplyWatchdog(); _isProcessing.value = false
+                _isProcessing.value = false
                 _error.value = DuqError.NetworkError(e.message ?: "Send failed")
             }
         }
@@ -695,7 +663,7 @@ class ConversationViewModel(
                     transcript, conversationId = convId, newConversation = isNew,
                     agentId = _activeAgentId.value,   // голос тоже уходит выбранному агенту
                 )
-                armReplyWatchdog()
+                _isProcessing.value = true
             } catch (e: CancellationException) {
                 removePendingVoice()
                 throw e // user cancelled (slide-away / background) — not an error
