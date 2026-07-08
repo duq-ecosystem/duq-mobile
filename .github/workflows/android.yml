@@ -28,30 +28,26 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    # Quality-gate: detekt (статический анализ Kotlin, SAST/lint) ПЕРЕД сборкой.
-    # Прогон НАЧИСТО (без предгенерации baseline) — отчёт показывает РЕАЛЬНОЕ число
-    # findings. continue-on-error: пока baseline не закоммичен, не валим сборку —
-    # смотрим объём легаси-долга. baseline.xml грузится артефактом → фиксируем в репо
-    # (ratchet: после коммита baseline detekt валит CI на любой НОВОЙ проблеме).
-    - name: Detekt (Kotlin SAST/lint)
+    # detekt (статический анализ Kotlin). БЕЗ baseline-сокрытия: показывает РЕАЛЬНОЕ
+    # число findings. Легаси-долг на 2026-07-09: ~1047 (shared 1028, androidApp 19) —
+    # НЕ прячем, чиним по TODO (роадмап). Пока чистится — continue-on-error, чтобы APK
+    # собирался, но число findings ЯВНО в логе (не фейковый зелёный).
+    - name: Detekt (Kotlin SAST/lint) — реальное число findings, без baseline
       run: |
+        set +e
         ./gradlew detekt --no-daemon
-        echo "----- detekt findings summary -----"
-        grep -h "number of total code smells" **/build/reports/detekt/detekt.md 2>/dev/null || true
+        code=$?
+        echo "----- detekt weighted issues (реальный легаси-долг, не скрыт) -----"
+        grep -rhE "weighted issues|number of total code smells" **/build/reports/detekt/*.md 2>/dev/null || true
+        if [ $code -ne 0 ]; then echo "::warning::detekt нашёл findings — легаси-долг Kotlin, чинить (см. роадмап)"; fi
       continue-on-error: true
 
-    - name: Generate detekt baseline (для фиксации в репо)
-      if: always()
-      run: ./gradlew detektBaseline --no-daemon || true
-
-    - name: Upload detekt reports + baseline
+    - name: Upload detekt reports
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: detekt-reports
-        path: |
-          **/build/reports/detekt/*
-          config/detekt/baseline.xml
+        path: '**/build/reports/detekt/*'
         if-no-files-found: ignore
 
     # versionCode непрерывен с монорепо (последний был 319): сдвиг +400 → первый билд > 319,
