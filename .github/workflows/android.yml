@@ -28,6 +28,28 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    # Quality-gate: detekt (статический анализ Kotlin, SAST/lint) ПЕРЕД сборкой.
+    # Нет baseline (первый прогон) → генерим его (фиксируем легаси-долг) и не валим
+    # сборку; SARIF-отчёт грузится в артефакты/Security-таб. Когда baseline
+    # закоммичен — detekt валит CI на ЛЮБОЙ новой проблеме (ratchet).
+    - name: Detekt (Kotlin SAST/lint)
+      run: |
+        if [ ! -f config/detekt/baseline.xml ]; then
+          echo "::notice::detekt baseline отсутствует — генерирую (легаси-долг фиксируется)"
+          ./gradlew detektBaseline --no-daemon || true
+          echo "::warning::Закоммить config/detekt/baseline.xml — тогда detekt станет блокирующим gate"
+        fi
+        ./gradlew detekt --no-daemon
+      continue-on-error: true
+
+    - name: Upload detekt reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: detekt-reports
+        path: '**/build/reports/detekt/*'
+        if-no-files-found: ignore
+
     # versionCode непрерывен с монорепо (последний был 319): сдвиг +400 → первый билд > 319,
     # иначе AppUpdater сочтёт обновление даунгрейдом.
     - name: Compute versionCode (continuous with monorepo 319)

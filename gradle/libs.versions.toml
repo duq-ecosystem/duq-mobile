@@ -5,6 +5,7 @@ kotlin = "2.3.20"
 agp = "8.7.3"
 compose-multiplatform = "1.11.1"
 ksp = "2.3.20-2.0.4"
+detekt = "1.23.8"  # статический анализ Kotlin (SAST/lint)
 
 # AndroidX / Compose-MP companion libs (JetBrains multiplatform forks)
 androidx-activityCompose = "1.9.3"
@@ -105,3 +106,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

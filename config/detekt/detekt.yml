@@ -1,0 +1,55 @@
+# Detekt-конфиг DUQ mobile (KMP). buildUponDefaultConfig=true → это ПЕРЕОПРЕДЕЛЕНИЯ
+# поверх дефолтов detekt. Прагматичный порог: ловим реальные проблемы (сложность,
+# потенциальные баги, стиль корутин/Compose), не топим в шуме. Ratchet — baseline.xml
+# фиксирует легаси, gate падает на НОВЫХ проблемах.
+
+build:
+  maxIssues: 0            # с baseline: НОВЫХ проблем быть не должно
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+complexity:
+  active: true
+  LongMethod:
+    threshold: 120       # KMP/Compose-функции бывают длинные; не душить
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 10
+  CyclomaticComplexMethod:
+    threshold: 20
+  TooManyFunctions:
+    active: false        # сервисы/клиенты законно крупные
+
+style:
+  active: true
+  MaxLineLength:
+    maxLineLength: 140
+  ReturnCount:
+    max: 6
+  MagicNumber:
+    active: false        # слишком шумно для UI-кода (dp/размеры)
+  UnusedPrivateMember:
+    active: true         # реальный мусор — ловим
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: false        # best-effort catch(Exception) в сетевом/IO-коде осознан
+  SwallowedException:
+    active: false        # то же — глушение в fire-and-forget осознано
+
+potential-bugs:
+  active: true           # категория реальных багов — держим включённой
+
+coroutines:
+  active: true           # корутины: GlobalScope, suspend-in-runBlocking и т.п.
+
+formatting:
+  active: true
+  MaximumLineLength:
+    maxLineLength: 140
+  FinalNewline:
+    active: true
