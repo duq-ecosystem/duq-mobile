@@ -146,6 +146,17 @@ class DuqNodeClient(
                 }
             }
         }
+        // At-least-once: подтверждаем ПОЛУЧЕНИЕ кадра шины по его stream id (_sid) — только
+        // после client-ack сервер делает XACK. Обрыв до ack → кадр переживёт в PEL и придёт
+        // снова на реконнекте. Дубли безвредны (дедуп по message_id / идемпотентный TEXT_DONE).
+        frame.str("_sid")?.let(::ackFrame)
+    }
+
+    /** Отправить серверу подтверждение получения кадра шины (client-ack). */
+    private fun ackFrame(sid: String) {
+        scope.launch {
+            runCatching { session?.send(Frame.Text("""{"type":"ack","id":"$sid"}""")) }
+        }
     }
 
     /** TEXT_DELTA/TEXT_DONE → стрим текста ответа (data.message = КУМУЛЯТИВНЫЙ текст). */
