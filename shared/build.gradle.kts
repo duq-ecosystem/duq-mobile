@@ -96,6 +96,10 @@ kotlin {
 android {
     namespace = "com.duq.shared"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+    // NDK запиннен явно: без этого раннер CI брал случайную предустановленную версию,
+    // и одна из них оказалась битой (source.properties отсутствовал → CXX1101, сборка падала).
+    // r26d — стабильная LTS; CI ставит ровно её (см. android.yml, шаг Install NDK).
+    ndkVersion = "26.3.11579264"
 
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
