@@ -142,11 +142,12 @@ class DuqChatClient(
         scope.launch { _chatEvents.emit(OcChatEvent(runId = rid, state = "delta", fullText = cumulative)) }
     }
 
-    /** TEXT_DONE — финал стрима: финализируем пузырь (как прежний REST-final), тёрн завершён. */
-    fun onStreamDone(cumulative: String) {
+    /** TEXT_DONE — финал стрима: финализируем пузырь (как прежний REST-final), тёрн завершён.
+     *  voice=true → модель решила озвучить (set_response_mode) → пузырь озвучиваем on-device. */
+    fun onStreamDone(cumulative: String, voice: Boolean = false) {
         val rid = currentRunId ?: return
         currentRunId = null
-        scope.launch { _chatEvents.emit(OcChatEvent(runId = rid, state = "final", fullText = cumulative)) }
+        scope.launch { _chatEvents.emit(OcChatEvent(runId = rid, state = "final", fullText = cumulative, voice = voice)) }
     }
 
     /** TEXT_RESET — стримленный «текст» оказался tool-call'ом (llama-recovery) → чистим частичный пузырь. */

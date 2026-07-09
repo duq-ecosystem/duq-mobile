@@ -523,9 +523,12 @@ class ConversationViewModel(
                 finalizedRunIds.add(event.runId)
 
                 // Decide + consume the voice flags ONCE here, so they're always cleared.
-                // Озвучка по РЕШЕНИЮ модели идёт через chat.message (handleIncomingMessage).
-                // Здесь — только legacy-путь «голосом спросил → голосом ответил».
-                val speakThisReply = event.runId == pendingVoiceReplyRunId || lastInputWasVoice
+                // Озвучиваем on-device если: (а) голосом спросил → голосом ответил (legacy),
+                // ИЛИ (б) модель сама решила озвучить (set_response_mode voice) — `event.voice`
+                // с финала TEXT_DONE. Синтез on-device (synthesizeToPath), серверный TTS = фолбек.
+                // Чинит: voiced-реплай typed/api-тёрна приходил текстом (флаг voice не смотрели).
+                val speakThisReply =
+                    event.runId == pendingVoiceReplyRunId || lastInputWasVoice || event.voice
                 if (event.runId == pendingVoiceReplyRunId) pendingVoiceReplyRunId = null
                 lastInputWasVoice = false
 

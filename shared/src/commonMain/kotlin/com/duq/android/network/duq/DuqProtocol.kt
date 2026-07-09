@@ -163,7 +163,9 @@ data class OcChatEvent(
     val runId: String,
     val state: String,          // "delta" | "final" | "error" | "aborted"
     val fullText: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    // Финал: модель решила озвучить (set_response_mode voice) → клиент синтезирует TTS on-device.
+    val voice: Boolean = false,
 )
 
 /** Шаг агента (tool/command) внутри ответа — live из ядра по reasoning-стриму. */

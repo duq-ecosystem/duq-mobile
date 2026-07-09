@@ -174,8 +174,9 @@ class DuqNodeClient(
     private fun handleTextStream(frame: JsonObject, done: Boolean) {
         val data = frame.obj("data")
         val cumulative = data?.str("message") ?: return
-        logger.d(TAG, "TEXT_${if (done) "DONE" else "DELTA"} len=${cumulative.length}")
-        if (done) chatClient.onStreamDone(cumulative) else chatClient.onStreamDelta(cumulative)
+        val voice = data?.bool("voice") ?: false
+        logger.d(TAG, "TEXT_${if (done) "DONE" else "DELTA"} len=${cumulative.length} voice=$voice")
+        if (done) chatClient.onStreamDone(cumulative, voice) else chatClient.onStreamDelta(cumulative)
     }
 
     /** REASONING_* фрейм → шаг агента в текущем тёрне (через DuqChatClient). */
