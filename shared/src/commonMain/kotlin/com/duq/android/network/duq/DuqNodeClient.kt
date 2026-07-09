@@ -87,6 +87,17 @@ class DuqNodeClient(
         _state.value = GatewayConnectionState.DISCONNECTED
     }
 
+    /** Переустановить сокет с актуальными token/user_id (после логина/смены аккаунта):
+     *  роняем текущую сессию — connectLoop переподключится и перечитает getUserId().
+     *  Без этого до-логиновой сокет несёт пустой user_id → сервер не подписывает
+     *  устройство на durable-шину, и live-доставка (reasoning/TEXT_DONE) не доходит. */
+    fun reconnect() {
+        if (runLoop?.isActive != true) { start(); return }
+        val s = session
+        session = null
+        if (s != null) scope.launch { runCatching { s.close() } }
+    }
+
     /** Reconnect loop with exponential backoff. Each iteration owns one ws session. */
     private suspend fun connectLoop() {
         var attempt = 0

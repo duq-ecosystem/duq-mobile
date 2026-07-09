@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.duq.android.data.Account
 import com.duq.android.data.SettingsRepository
+import com.duq.android.network.duq.DuqNodeClient
 import com.duq.android.network.duq.DuqRestClient
 import com.duq.android.network.duq.FamilyMember
 import com.duq.android.network.duq.IntegrationsResponse
@@ -56,6 +57,7 @@ fun ProfileScreen(
     onAddAccount: () -> Unit,      // «войти под другим» → экран входа
     rest: DuqRestClient = koinInject(),
     repo: SettingsRepository = koinInject(),
+    nodeClient: DuqNodeClient = koinInject(),
 ) {
     val scope = rememberCoroutineScope()
     val activeId = remember { repo.getUserId() }
@@ -135,7 +137,7 @@ fun ProfileScreen(
                 AccountRow(
                     acc = acc,
                     active = acc.userId == activeId,
-                    onSwitch = { repo.setActiveUser(acc.userId); onSwitched() },
+                    onSwitch = { repo.setActiveUser(acc.userId); nodeClient.reconnect(); onSwitched() },
                     onRemove = { repo.removeAccount(acc.userId); accounts = repo.getAccounts() },
                 )
             }

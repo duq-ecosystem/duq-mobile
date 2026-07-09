@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.duq.android.data.SettingsRepository
+import com.duq.android.network.duq.DuqNodeClient
 import com.duq.android.network.duq.DuqRestClient
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -30,6 +31,7 @@ fun RegistrationScreen(
     onBack: (() -> Unit)? = null,   // не-null = «войти под другим» поверх профиля (показать назад)
     rest: DuqRestClient = koinInject(),
     repo: SettingsRepository = koinInject(),
+    nodeClient: DuqNodeClient = koinInject(),
 ) {
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
@@ -81,7 +83,7 @@ fun RegistrationScreen(
                         status = runCatching {
                             rest.login(name.trim())
                         }.fold(
-                            onSuccess = { onRegistered(); "" },
+                            onSuccess = { nodeClient.reconnect(); onRegistered(); "" },
                             onFailure = { busy = false; "Ошибка: ${it.message}" },
                         )
                     }
