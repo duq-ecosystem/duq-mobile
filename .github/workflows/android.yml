@@ -68,7 +68,7 @@ jobs:
     # build.gradle падает на release-config → fallback на debug-подпись (APK рабочий;
     # та же подпись keystore включится, когда Денис добавит пароли в секреты).
     - name: Decode keystore (if present)
-      if: github.event_name == 'push'
+      if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
       run: |
         if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > androidApp/duq-release.jks
