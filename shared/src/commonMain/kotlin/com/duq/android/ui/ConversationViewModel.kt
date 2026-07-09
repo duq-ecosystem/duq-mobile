@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -402,31 +401,51 @@ class ConversationViewModel(
     }
 
     /**
-     * Restore the chat from the server-side transcript once the gateway is connected.
-     * The gateway is the single source of truth for history (shared across all devices),
-     * so we don't keep a local copy — this fixes "chat resets every launch" at the root.
+     * Само-восстановление состояния при КАЖДОМ (пере)подключении WS, не только на первом.
+     *
+     * Корень бага «после обновления/обрыва нет истории чатов и нотификаций до сворачивания-
+     * разворачивания»: раньше историю грузили ОДИН раз на первом CONNECTED, а первичный HTTP
+     * мог упасть по таймауту (сервер недоступен в окне reload/рестарта) → пустой экран НАВСЕГДА
+     * без ретрая; 🔔 inbox же обновлялся только на ON_RESUME (foreground). Теперь на каждый
+     * переход в CONNECTED: подтягиваем беседы, сеем историю если чат пуст, обновляем inbox —
+     * без ручного сворачивания. Живые сообщения не затираются (сеем только в пустой чат).
+     * Gateway — единый источник истории (общая на устройства), локальной копии не держим.
      */
     private fun restoreServerHistory() {
         viewModelScope.launch {
-            connectionState.first { it == GatewayConnectionState.CONNECTED }
-            val list = runCatching { gatewayClient.listConversations() }.getOrElse {
-                logger.e(TAG, "listConversations failed: ${it.message}", it); emptyList()
+            var wasConnected = false
+            connectionState.collect { state ->
+                val nowConnected = state == GatewayConnectionState.CONNECTED
+                if (nowConnected && !wasConnected) {
+                    // Подхватить нотификации, накопившиеся пока WS лежал (pending-дренаж /ws
+                    // положит их в inbox через record; refresh перечитывает персист).
+                    refreshInbox()
+                    // Ретрай агентов, если первичная загрузка упала по таймауту.
+                    if (_agents.value.isEmpty()) loadAgents()
+                    val list = runCatching { gatewayClient.listConversations() }.getOrElse {
+                        logger.w(TAG, "restore listConversations failed: ${it.message}"); emptyList()
+                    }
+                    if (list.isNotEmpty()) _conversations.value = list
+                    // Сеем историю ТОЛЬКО в пустой чат (не трогаем активную беседу с сообщениями
+                    // и не дублируем live-стрим). Целевая беседа — активная, иначе самая свежая.
+                    if (_messages.value.isEmpty()) {
+                        val target = _activeConversationId.value?.let { id -> list.firstOrNull { it.id == id } }
+                            ?: list.firstOrNull()
+                        if (target != null) {
+                            _activeConversationId.value = target.id
+                            _activeConversationTitle.value = target.dateLabel
+                            val history = runCatching { gatewayClient.loadMessages(target.id) }.getOrElse {
+                                logger.w(TAG, "restore loadMessages failed: ${it.message}"); emptyList()
+                            }
+                            logger.i(TAG, "restore: conv=${target.id} ${history.size} messages")
+                            if (history.isNotEmpty()) {
+                                _messages.update { live -> if (live.isEmpty()) history.map { it.toMessage() } else live }
+                            }
+                        }
+                    }
+                }
+                wasConnected = nowConnected
             }
-            _conversations.value = list
-            // Самая свежая беседа (ядро вернуло DESC) — активная при старте.
-            val first = list.firstOrNull() ?: return@launch
-            _activeConversationId.value = first.id
-            _activeConversationTitle.value = first.dateLabel
-            val history = runCatching { gatewayClient.loadMessages(first.id) }.getOrElse {
-                logger.e(TAG, "loadMessages failed: ${it.message}", it); emptyList()
-            }
-            logger.i(TAG, "restoreServerHistory: conv=${first.id} ${history.size} messages")
-            if (history.isEmpty()) return@launch
-            val restored = history.map { it.toMessage() }
-            // Seed from the server transcript ONLY while the chat is still empty — the
-            // normal cold-start case. If a reply already streamed in during the connect
-            // window (or the user sent something), DON'T clobber/duplicate it.
-            _messages.update { live -> if (live.isEmpty()) restored else live }
         }
     }
 
