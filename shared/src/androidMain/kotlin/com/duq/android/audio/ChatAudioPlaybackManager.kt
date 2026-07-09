@@ -217,6 +217,13 @@ class ChatAudioPlaybackManager(
         mainHandler.post {
             if (isReleased) return@post
             try {
+                // Привязать messageId к playbackInfo ДО старта плеера. Иначе автоплей-путь
+                // (speakReply → play() → playFile) не проходит через loadAndPlay и messageId
+                // остаётся пустым (stop() выше сбросил info) → STATE_READY делает .copy() поверх
+                // пустого → audioPlaybackInfo.messageId=null → кнопка не считает себя играющей
+                // (показывает ▶ при живом звуке). Ставим здесь (main-thread, FIFO после stop()).
+                _playbackInfo.value = PlaybackInfo(messageId = messageId, state = PlaybackState.LOADING)
+
                 // Don't create new player if released or if player already exists
                 val player = exoPlayer ?: run {
                     if (isReleased) return@post
