@@ -118,11 +118,12 @@ class DuqChatClient(
         conversationId: String? = null,
         newConversation: Boolean = false,
         agentId: String? = null,
+        modelId: String? = null,
     ) {
         currentRunId = runId
         scope.launch {
             try {
-                rest.sendMessage(text, conversationId, newConversation, agentId)
+                rest.sendMessage(text, conversationId, newConversation, agentId, modelId)
             } catch (e: Exception) {
                 logger.e(TAG, "sendMessage failed: ${e.message}")
                 _chatEvents.emit(
