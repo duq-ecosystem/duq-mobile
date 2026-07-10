@@ -40,6 +40,10 @@ data class Message(
     val isStreaming: Boolean = false,
     val steps: List<MessageStep> = emptyList(),
     val voicePhase: VoicePhase? = null,
+    // Задача 15: какая модель/провайдер ответили + флаг резерва — лейбл в шапке пузыря ассистента.
+    val model: String = "",
+    val provider: String = "",
+    val isFallback: Boolean = false,
     // Unix epoch millis — канонический порядок сообщений (kotlinx-datetime убран:
     // Clock.System не резолвился под Kotlin 2.3.20 на iOS klib).
     val createdAt: Long = nowMillis()

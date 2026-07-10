@@ -214,6 +214,19 @@ fun MessageBubble(
                             // Typing indicator dots
                             TypingIndicator()
                         }
+                        // Задача 15: лейбл реально ответившей модели/провайдера (после завершения).
+                        // Резерв (is_fallback) выделяем — видно, что ответила не основная модель.
+                        if (!isStreaming && message.model.isNotBlank()) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            val shortModel = message.model.substringAfterLast('/')
+                            val prov = message.provider.removePrefix("api.")
+                            Text(
+                                text = if (message.isFallback) "⚠ $shortModel · $prov" else "$shortModel · $prov",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (message.isFallback) DuqColors.primary else DuqColors.textSecondary,
+                            )
+                        }
                     }
                 }
 

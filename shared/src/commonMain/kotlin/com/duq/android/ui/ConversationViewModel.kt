@@ -14,6 +14,7 @@ import com.duq.android.error.DuqError
 import com.duq.android.logging.Logger
 import com.duq.android.network.TtsClient
 import com.duq.android.network.duq.AgentInfo
+import com.duq.android.network.duq.ModelInfo
 import com.duq.android.network.duq.DuqChatClient
 import com.duq.android.network.duq.DuqConversation
 import com.duq.android.network.duq.DuqIncomingMessage
@@ -261,6 +262,12 @@ class ConversationViewModel(
     private val _activeAgentId = MutableStateFlow("main")
     val activeAgentId: StateFlow<String> = _activeAgentId.asStateFlow()
 
+    // Задача 16: цепь моделей (из /api/models) + ручной выбор модели. Пустой id → автоцепь ядра.
+    private val _models = MutableStateFlow<List<ModelInfo>>(emptyList())
+    val models: StateFlow<List<ModelInfo>> = _models.asStateFlow()
+    private val _activeModelId = MutableStateFlow("")
+    val activeModelId: StateFlow<String> = _activeModelId.asStateFlow()
+
     fun loadAgents() {
         viewModelScope.launch {
             runCatching { gatewayClient.listAgents() }
@@ -274,6 +281,20 @@ class ConversationViewModel(
                 }
                 .onFailure { logger.w(TAG, "loadAgents failed: ${it.message}") }
         }
+    }
+
+    /** Реестр моделей ядра для пикера (Задача 16). Ошибка/пусто → пикер скрыт, работает автоцепь. */
+    fun loadModels() {
+        viewModelScope.launch {
+            runCatching { gatewayClient.listModels() }
+                .onSuccess { _models.value = it }
+                .onFailure { logger.w(TAG, "loadModels failed: ${it.message}") }
+        }
+    }
+
+    /** Ручной выбор модели из пикера (Задача 16). Тап по активной → сброс на автоцепь (""). */
+    fun switchModel(modelId: String) {
+        _activeModelId.value = if (modelId == _activeModelId.value) "" else modelId
     }
 
     /** Переключиться на агента: грузим ЕГО диалоги (раздельные истории per agent) и
@@ -339,6 +360,7 @@ class ConversationViewModel(
         collectChatEvents()
         refreshUpdateState()
         loadAgents()
+        loadModels()
         restoreServerHistory()
         warmTtsModel()
     }
@@ -420,8 +442,9 @@ class ConversationViewModel(
                     // Подхватить нотификации, накопившиеся пока WS лежал (pending-дренаж /ws
                     // положит их в inbox через record; refresh перечитывает персист).
                     refreshInbox()
-                    // Ретрай агентов, если первичная загрузка упала по таймауту.
+                    // Ретрай агентов/моделей, если первичная загрузка упала по таймауту.
                     if (_agents.value.isEmpty()) loadAgents()
+                    if (_models.value.isEmpty()) loadModels()
                     val list = runCatching { gatewayClient.listConversations() }.getOrElse {
                         logger.w(TAG, "restore listConversations failed: ${it.message}"); emptyList()
                     }
@@ -562,13 +585,25 @@ class ConversationViewModel(
                 _messages.update { msgs ->
                     val updated = when {
                         msgs.any { it.id == event.runId } ->
-                            msgs.map { if (it.id == event.runId) it.copy(content = finalContent, isStreaming = false) else it }
+                            msgs.map {
+                                if (it.id == event.runId)
+                                    it.copy(
+                                        content = finalContent, isStreaming = false,
+                                        model = event.model, provider = event.provider,
+                                        isFallback = event.isFallback,
+                                    )
+                                else it
+                            }
                         // Live-push мог уже отрисовать этот же ответ (гонка push↔REST) —
                         // не дублируем по содержимому.
                         msgs.takeLast(8).any { it.role == MessageRole.ASSISTANT && it.content.trim() == finalContent.trim() } ->
                             msgs
                         else ->
-                            msgs + Message(id = event.runId, role = MessageRole.ASSISTANT, content = finalContent, isStreaming = false)
+                            msgs + Message(
+                                id = event.runId, role = MessageRole.ASSISTANT, content = finalContent,
+                                isStreaming = false, model = event.model, provider = event.provider,
+                                isFallback = event.isFallback,
+                            )
                     }
                     ChatStepReducer.markAllStepsDone(updated, event.runId)
                 }
@@ -630,6 +665,7 @@ class ConversationViewModel(
                 gatewayClient.sendMessage(
                     text, runId, conversationId = convId, newConversation = isNew,
                     agentId = _activeAgentId.value,
+                    modelId = _activeModelId.value.ifBlank { null },
                 )
                 _isProcessing.value = true
             } catch (e: Exception) {
@@ -684,6 +720,7 @@ class ConversationViewModel(
                 gatewayClient.sendMessage(
                     transcript, conversationId = convId, newConversation = isNew,
                     agentId = _activeAgentId.value,   // голос тоже уходит выбранному агенту
+                    modelId = _activeModelId.value.ifBlank { null },
                 )
                 _isProcessing.value = true
             } catch (e: CancellationException) {

@@ -26,7 +26,9 @@ data class MessageRequest(
     @SerialName("agent_id") val agentId: String? = null,
     // Мультиюзер: внутренний UUID юзера (выдан при регистрации). Ядро адресует задачу ему
     // (его память/ресурсы), а не владельцу. null → старый путь (владелец) на сервере.
-    @SerialName("user_id") val userId: String? = null
+    @SerialName("user_id") val userId: String? = null,
+    // Ручной выбор модели из пикера (Задача 16): id из GET /api/models. null → автоцепь.
+    @SerialName("model_id") val modelId: String? = null
 )
 
 /** Обновление имени уже зарегистрированного юзера (POST /api/auth/profile) — панель «Сохранить». */
@@ -114,6 +116,20 @@ data class AgentsResponse(
     val agents: List<AgentInfo> = emptyList()
 )
 
+/** Одна модель из цепи ядра (GET /duq/api/models) — для пикера модели в чате (Задача 16). */
+@Serializable
+data class ModelInfo(
+    val id: String,               // "primary" | "fallback_1" … — уходит как model_id в запрос
+    val model: String,            // напр. "openai/gpt-oss-120b-Turbo"
+    val provider: String,         // хост, напр. "api.deepinfra.com"
+    @SerialName("is_primary") val isPrimary: Boolean = false
+)
+
+@Serializable
+data class ModelsResponse(
+    val models: List<ModelInfo> = emptyList()
+)
+
 /** Ответ POST /duq/api/message — задача поставлена в очередь. */
 @Serializable
 data class MessageEnqueued(
@@ -166,6 +182,10 @@ data class OcChatEvent(
     val errorMessage: String? = null,
     // Финал: модель решила озвучить (set_response_mode voice) → клиент синтезирует TTS on-device.
     val voice: Boolean = false,
+    // Финал (Задача 15): какая модель/провайдер реально ответили + флаг резерва (для лейбла в чате).
+    val model: String = "",
+    val provider: String = "",
+    val isFallback: Boolean = false,
 )
 
 /** Шаг агента (tool/command) внутри ответа — live из ядра по reasoning-стриму. */

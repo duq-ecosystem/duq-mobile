@@ -96,6 +96,8 @@ fun MainScreen(
     val activeConversationTitle by viewModel.activeConversationTitle.collectAsState()
     val agents by viewModel.agents.collectAsState()
     val activeAgentId by viewModel.activeAgentId.collectAsState()
+    val models by viewModel.models.collectAsState()
+    val activeModelId by viewModel.activeModelId.collectAsState()
 
     // Audio playback state
     val audioPlaybackInfo by audioPlaybackManager.playbackInfo.collectAsState()
@@ -220,6 +222,38 @@ fun MainScreen(
                                     .padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
+                    }
+                }
+                // Задача 16: пикер модели (аналог агентов). «Авто» = автоцепь ядра (без override),
+                // остальные — ручной выбор primary из сконфигурированной цепи. Скрыт если цепь пуста.
+                if (models.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(bottom = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        @Composable
+                        fun modelChip(id: String, label: String) {
+                            val sel = id == activeModelId
+                            Text(
+                                text = label,
+                                fontSize = 13.sp,
+                                fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                color = if (sel) DuqColors.primary else DuqColors.textSecondary,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(
+                                        if (sel) DuqColors.primary.copy(alpha = 0.15f)
+                                        else DuqColors.surfaceElevated
+                                    )
+                                    .clickable { viewModel.switchModel(id) }
+                                    .padding(horizontal = 14.dp, vertical = 7.dp)
+                            )
+                        }
+                        modelChip("", "Авто")
+                        models.forEach { m -> modelChip(m.id, m.model.substringAfterLast('/')) }
                     }
                 }
                 if (conversations.isEmpty()) {

@@ -175,8 +175,13 @@ class DuqNodeClient(
         val data = frame.obj("data")
         val cumulative = data?.str("message") ?: return
         val voice = data?.bool("voice") ?: false
-        logger.d(TAG, "TEXT_${if (done) "DONE" else "DELTA"} len=${cumulative.length} voice=$voice")
-        if (done) chatClient.onStreamDone(cumulative, voice) else chatClient.onStreamDelta(cumulative)
+        // Задача 15: лейбл реально ответившей модели/провайдера + флаг резерва (только в TEXT_DONE).
+        val model = data?.str("model") ?: ""
+        val provider = data?.str("provider") ?: ""
+        val isFallback = data?.bool("is_fallback") ?: false
+        logger.d(TAG, "TEXT_${if (done) "DONE" else "DELTA"} len=${cumulative.length} voice=$voice model=$model fb=$isFallback")
+        if (done) chatClient.onStreamDone(cumulative, voice, model, provider, isFallback)
+        else chatClient.onStreamDelta(cumulative)
     }
 
     /** REASONING_* фрейм → шаг агента в текущем тёрне (через DuqChatClient). */

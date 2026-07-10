@@ -120,6 +120,7 @@ class DuqRestClient(
         conversationId: String? = null,
         newConversation: Boolean = false,
         agentId: String? = null,
+        modelId: String? = null,
     ): String {
         val resp = client.post(url("message")) {
             contentType(ContentType.Application.Json)
@@ -127,6 +128,7 @@ class DuqRestClient(
                 MessageRequest(
                     text, conversationId, if (newConversation) true else null, agentId,
                     userId = settings.getUserId().ifBlank { null },
+                    modelId = modelId,
                 )
             )
         }
@@ -152,6 +154,13 @@ class DuqRestClient(
         val resp = client.get(url("agents"))
         if (!resp.status.isSuccess()) throw DuqApiException("agents ${resp.status}")
         return resp.body<AgentsResponse>().agents
+    }
+
+    /** Цепь моделей ядра для пикера модели в чате (GET /api/models, Задача 16). */
+    suspend fun listModels(): List<ModelInfo> {
+        val resp = client.get(url("models"))
+        if (!resp.status.isSuccess()) throw DuqApiException("models ${resp.status}")
+        return resp.body<ModelsResponse>().models
     }
 
     suspend fun listToolCategories(): List<ToolCategory> {

@@ -144,11 +144,27 @@ class DuqChatClient(
 
     /** TEXT_DONE — финал стрима: финализируем пузырь (как прежний REST-final), тёрн завершён.
      *  voice=true → модель решила озвучить (set_response_mode) → пузырь озвучиваем on-device. */
-    fun onStreamDone(cumulative: String, voice: Boolean = false) {
+    fun onStreamDone(
+        cumulative: String,
+        voice: Boolean = false,
+        model: String = "",
+        provider: String = "",
+        isFallback: Boolean = false,
+    ) {
         val rid = currentRunId ?: return
         currentRunId = null
-        scope.launch { _chatEvents.emit(OcChatEvent(runId = rid, state = "final", fullText = cumulative, voice = voice)) }
+        scope.launch {
+            _chatEvents.emit(
+                OcChatEvent(
+                    runId = rid, state = "final", fullText = cumulative, voice = voice,
+                    model = model, provider = provider, isFallback = isFallback,
+                )
+            )
+        }
     }
+
+    /** Цепь моделей ядра (GET /api/models) для пикера модели в чате (Задача 16). */
+    suspend fun listModels(): List<ModelInfo> = rest.listModels()
 
     /** TEXT_RESET — стримленный «текст» оказался tool-call'ом (llama-recovery) → чистим частичный пузырь. */
     fun onStreamReset() {
