@@ -208,19 +208,22 @@ class DuqNodeClient(
     }
 
     private fun handleCommand(frame: JsonObject) {
-        val requestId = frame.str("request_id") ?: return
         val command = frame.str("command") ?: return
+        // request_id ОПЦИОНАЛЕН: с ним — round-trip (исполняем + шлём phone.result); без него —
+        // fire-and-forget (durable notify.show и т.п.): просто исполняем, ответ не нужен. Раньше
+        // кадр без request_id молча дропался (`?: return`) → notify.show не доходил.
+        val requestId = frame.str("request_id")
         val params = frame.obj("params")?.toAnyMap() ?: emptyMap<String, Any?>()
         scope.launch {
-            logger.d(TAG, "phone.command $command req=${requestId.take(8)}")
+            logger.d(TAG, "phone.command $command req=${requestId?.take(8) ?: "-"}")
             try {
                 val payload = executor.execute(command, params)
-                sendResult(requestId, payload, null)
+                if (requestId != null) sendResult(requestId, payload, null)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 logger.e(TAG, "command $command failed: ${e.message}")
-                sendResult(requestId, null, e.message ?: "command failed")
+                if (requestId != null) sendResult(requestId, null, e.message ?: "command failed")
             }
         }
     }
