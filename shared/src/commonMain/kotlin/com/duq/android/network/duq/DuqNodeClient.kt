@@ -152,9 +152,9 @@ class DuqNodeClient(
                 when {
                     et.startsWith("REASONING_") -> handleReasoning(et, frame)
                     // Финал ассистента идёт ЕДИНЫМ путём chat.message (см. handleChatMessage) —
-                    // TEXT_DONE больше не рендерит финал (один механизм доставки). TEXT_DELTA
-                    // (стрим по фразам) оставлен на будущее, TEXT_RESET чистит частичный пузырь.
-                    et == "TEXT_DELTA" -> handleTextStream(frame, done = false)
+                    // TEXT_DONE снят (один механизм). TEXT_DELTA (стрим по фразам) оставлен на
+                    // будущее, TEXT_RESET чистит частичный пузырь.
+                    et == "TEXT_DELTA" -> handleTextDelta(frame)
                     et == "TEXT_RESET" -> chatClient.onStreamReset()
                 }
             }
@@ -173,17 +173,10 @@ class DuqNodeClient(
     }
 
     /** TEXT_DELTA/TEXT_DONE → стрим текста ответа (data.message = КУМУЛЯТИВНЫЙ текст). */
-    private fun handleTextStream(frame: JsonObject, done: Boolean) {
-        val data = frame.obj("data")
-        val cumulative = data?.str("message") ?: return
-        val voice = data?.bool("voice") ?: false
-        // Задача 15: лейбл реально ответившей модели/провайдера + флаг резерва (только в TEXT_DONE).
-        val model = data?.str("model") ?: ""
-        val provider = data?.str("provider") ?: ""
-        val isFallback = data?.bool("is_fallback") ?: false
-        logger.d(TAG, "TEXT_${if (done) "DONE" else "DELTA"} len=${cumulative.length} voice=$voice model=$model fb=$isFallback")
-        if (done) chatClient.onStreamDone(cumulative, voice, model, provider, isFallback)
-        else chatClient.onStreamDelta(cumulative)
+    /** TEXT_DELTA → потоковый префикс ответа (кумулятивный). Финал идёт единым путём chat.message. */
+    private fun handleTextDelta(frame: JsonObject) {
+        val cumulative = frame.obj("data")?.str("message") ?: return
+        chatClient.onStreamDelta(cumulative)
     }
 
     /** REASONING_* фрейм → шаг агента в текущем тёрне (через DuqChatClient). */

@@ -577,72 +577,7 @@ class ConversationViewModel(
                 // у каждой фразы внутри StreamingTts).
                 if (event.runId == pendingVoiceReplyRunId) streamingTts.feed(event.runId, cumulative)
             }
-            "final" -> {
-                _isProcessing.value = false
-                val finalRaw = event.fullText ?: streamBuffer.toString()
-                val finalContent = ReplyText.clean(finalRaw)
-                currentRunId = null; streamBuffer.clear(); _isProcessing.value = false
-                finalizedRunIds.add(event.runId)
-
-                // Decide + consume the voice flags ONCE here, so they're always cleared.
-                // Озвучиваем on-device если: (а) голосом спросил → голосом ответил (legacy),
-                // ИЛИ (б) модель сама решила озвучить (set_response_mode voice) — `event.voice`
-                // с финала TEXT_DONE. Синтез on-device (synthesizeToPath), серверный TTS = фолбек.
-                // Чинит: voiced-реплай typed/api-тёрна приходил текстом (флаг voice не смотрели).
-                val speakThisReply =
-                    event.runId == pendingVoiceReplyRunId || lastInputWasVoice || event.voice
-                if (event.runId == pendingVoiceReplyRunId) pendingVoiceReplyRunId = null
-                lastInputWasVoice = false
-
-                // Pure NO_REPLY sentinel — engine asked to surface nothing. Drop the placeholder.
-                if (finalContent.isEmpty()) {
-                    _messages.update { msgs -> msgs.filter { it.id != event.runId } }
-                    return
-                }
-
-                // Update the streaming placeholder, or insert the message if no delta ever
-                // created one. Also settle any tool steps whose "end" frame never arrived.
-                _messages.update { msgs ->
-                    val updated = when {
-                        msgs.any { it.id == event.runId } ->
-                            msgs.map {
-                                if (it.id == event.runId)
-                                    it.copy(
-                                        content = finalContent, isStreaming = false,
-                                        model = event.model, provider = event.provider,
-                                        isFallback = event.isFallback,
-                                    )
-                                else it
-                            }
-                        // Live-push мог уже отрисовать этот же ответ (гонка push↔REST) —
-                        // не дублируем по содержимому.
-                        msgs.takeLast(8).any { it.role == MessageRole.ASSISTANT && it.content.trim() == finalContent.trim() } ->
-                            msgs
-                        else ->
-                            msgs + Message(
-                                id = event.runId, role = MessageRole.ASSISTANT, content = finalContent,
-                                isStreaming = false, model = event.model, provider = event.provider,
-                                isFallback = event.isFallback,
-                            )
-                    }
-                    ChatStepReducer.markAllStepsDone(updated, event.runId)
-                }
-
-                // Contextual TTS: speak the reply only if this turn came from voice.
-                if (streamingTts.isStreaming(event.runId)) {
-                    // Догон уже озвучивает по фразам — финалим остатком (СЫРОЙ текст),
-                    // НЕ дублируем полным speakReply.
-                    streamingTts.finish(event.runId, finalRaw)
-                    // Дедуп: последующий chat.message (серверный id) озвучивает msg.content
-                    // (СЫРОЙ текст) — помечаем и сырой, и cleaned, чтобы повторного полного
-                    // синтеза не было (speakReply дедупит по spokenContents).
-                    spokenContents.add(finalContent.trim())
-                    spokenContents.add(finalRaw.trim())
-                    _messages.update { msgs -> msgs.map { if (it.id == event.runId) it.copy(hasAudio = true) else it } }
-                } else if (speakThisReply) {
-                    speakReply(event.runId, finalContent)
-                }
-            }
+            // «final» УБРАН: финал ассистента идёт ЕДИНЫМ путём chat.message (handleIncomingMessage).
             "aborted", "error" -> {
                 _isProcessing.value = false
                 val errText = event.errorMessage ?: "Error"
