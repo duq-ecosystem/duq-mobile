@@ -163,7 +163,16 @@ class ConversationViewModel(
     /** Live-сообщение беседы из push (/duq/ws): рендерим, если относится к активной
      *  беседе и не дубль. */
     private fun handleIncomingMessage(msg: DuqIncomingMessage) {
-        if (msg.content.isBlank()) return
+        if (msg.content.isBlank()) {
+            // Пустой финал (NO_REPLY) единого пути → снять плейсхолдер своего тёрна + спиннер.
+            val rid = currentRunId
+            if (rid != null && _messages.value.any { it.id == rid }) {
+                _messages.update { list -> list.filter { it.id != rid } }
+                currentRunId = null
+                _isProcessing.value = false
+            }
+            return
+        }
         // Фильтр по активной беседе: пуш ДРУГОЙ беседы (напр. из telegram) не льём в
         // текущий вид. Новый чат (active==null) ещё не знает свой id — первый пуш его
         // сообщает: усыновляем id и подтягиваем список, чтобы беседа была в переключателе.
@@ -184,14 +193,22 @@ class ConversationViewModel(
             if (rid != null && _messages.value.any { it.id == rid }) {
                 _messages.update { msgs ->
                     val upd = msgs.map {
-                        if (it.id == rid) it.copy(content = ReplyText.clean(msg.content), isStreaming = false, hasAudio = it.hasAudio || msg.voice) else it
+                        if (it.id == rid) it.copy(
+                            content = ReplyText.clean(msg.content), isStreaming = false,
+                            hasAudio = it.hasAudio || msg.voice,
+                            // Задача 15: лейбл реально ответившей модели (единый путь chat.message).
+                            model = msg.model, provider = msg.provider, isFallback = msg.isFallback,
+                        ) else it
                     }
                     ChatStepReducer.markAllStepsDone(upd, rid)
                 }
                 // Ответ доставлен — тёрн завершён, снимаем спиннер обработки.
+                currentRunId = null
                 _isProcessing.value = false
-                // Модель решила озвучить → синтез TTS на пузыре этого тёрна.
-                if (msg.voice) speakReply(rid, ReplyText.clean(msg.content))
+                // Озвучиваем если модель решила (msg.voice) ИЛИ вопрос был голосом (legacy).
+                val speak = msg.voice || lastInputWasVoice
+                lastInputWasVoice = false
+                if (speak) speakReply(rid, ReplyText.clean(msg.content))
                 return
             }
         }
@@ -216,6 +233,7 @@ class ConversationViewModel(
             it + Message(
                 id = msg.messageId, role = role, content = msg.content, hasAudio = msg.voice,
                 createdAt = nowMillis(),
+                model = msg.model, provider = msg.provider, isFallback = msg.isFallback,
             )
         }
     }
@@ -352,6 +370,8 @@ class ConversationViewModel(
             audioDurationMs = if (cached) audioPlaybackManager.cachedDurationMs(mid).takeIf { it > 0 } else null,
             // Серверное время (Unix-сек) — канонический порядок сортировки. Без него nowMillis().
             createdAt = if (createdAt > 0) createdAt * 1000L else nowMillis(),
+            // Задача 15 «лейбл всегда»: лейбл модели из истории.
+            model = model, provider = provider, isFallback = isFallback,
         )
     }
 

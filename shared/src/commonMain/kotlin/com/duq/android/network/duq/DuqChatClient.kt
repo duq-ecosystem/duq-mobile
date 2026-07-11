@@ -85,8 +85,13 @@ class DuqChatClient(
     fun onIncomingMessage(
         messageId: String, role: String, content: String,
         conversationId: String?, voice: Boolean = false,
+        model: String = "", provider: String = "", isFallback: Boolean = false,
     ) {
-        scope.launch { _incomingMessages.emit(DuqIncomingMessage(messageId, role, content, conversationId, voice)) }
+        scope.launch {
+            _incomingMessages.emit(
+                DuqIncomingMessage(messageId, role, content, conversationId, voice, model, provider, isFallback)
+            )
+        }
     }
 
     /**
@@ -260,7 +265,7 @@ class DuqChatClient(
         }
         return msgs
             .filter { it.role == "user" || it.role == "assistant" }
-            .map { OcHistoryMsg(it.role, it.content, it.id, it.hasAudio, it.createdAt) }
+            .map { OcHistoryMsg(it.role, it.content, it.id, it.hasAudio, it.createdAt, it.model, it.provider, it.isFallback) }
             .takeLast(limit)
     }
 

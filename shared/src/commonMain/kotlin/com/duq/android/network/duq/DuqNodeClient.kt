@@ -151,8 +151,10 @@ class DuqNodeClient(
                 val et = frame.str("event_type") ?: return
                 when {
                     et.startsWith("REASONING_") -> handleReasoning(et, frame)
+                    // Финал ассистента идёт ЕДИНЫМ путём chat.message (см. handleChatMessage) —
+                    // TEXT_DONE больше не рендерит финал (один механизм доставки). TEXT_DELTA
+                    // (стрим по фразам) оставлен на будущее, TEXT_RESET чистит частичный пузырь.
                     et == "TEXT_DELTA" -> handleTextStream(frame, done = false)
-                    et == "TEXT_DONE" -> handleTextStream(frame, done = true)
                     et == "TEXT_RESET" -> chatClient.onStreamReset()
                 }
             }
@@ -198,14 +200,18 @@ class DuqNodeClient(
     private fun handleChatMessage(frame: JsonObject) {
         val messageId = frame.str("message_id") ?: return
         val role = frame.str("role") ?: "assistant"
-        val content = frame.str("content") ?: return
+        val content = frame.str("content") ?: ""  // "" = сигнал финализации (NO_REPLY) — не return
         val conversationId = frame.str("conversation_id")
         val voice = frame.bool("voice") ?: false
+        // Задача 15: лейбл реально ответившей модели (единый кадр chat.message).
+        val model = frame.str("model") ?: ""
+        val provider = frame.str("provider") ?: ""
+        val isFallback = frame.bool("is_fallback") ?: false
         logger.d(
             TAG,
-            "chat.message id=${messageId.take(8)} role=$role conv=${conversationId?.take(8)} len=${content.length} voice=$voice"
+            "chat.message id=${messageId.take(8)} role=$role len=${content.length} voice=$voice model=$model fb=$isFallback"
         )
-        chatClient.onIncomingMessage(messageId, role, content, conversationId, voice)
+        chatClient.onIncomingMessage(messageId, role, content, conversationId, voice, model, provider, isFallback)
     }
 
     private fun handleCommand(frame: JsonObject) {

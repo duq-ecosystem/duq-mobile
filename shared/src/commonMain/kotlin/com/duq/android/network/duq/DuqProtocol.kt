@@ -155,7 +155,11 @@ data class HistoryMsg(
     val content: String,
     @SerialName("has_audio") val hasAudio: Boolean = false,
     // Серверное время создания (Unix-секунды) — канонический порядок сообщений.
-    @SerialName("created_at") val createdAt: Long = 0
+    @SerialName("created_at") val createdAt: Long = 0,
+    // Задача 15 «лейбл всегда»: сервер отдаёт лейбл модели и для истории.
+    val model: String = "",
+    val provider: String = "",
+    @SerialName("is_fallback") val isFallback: Boolean = false,
 )
 
 /**
@@ -167,7 +171,11 @@ data class DuqIncomingMessage(
     val role: String,    // "user" | "assistant"
     val content: String,
     val conversationId: String? = null,
-    val voice: Boolean = false
+    val voice: Boolean = false,
+    // Задача 15: лейбл реально ответившей модели (едет в ЕДИНОМ кадре chat.message).
+    val model: String = "",
+    val provider: String = "",
+    val isFallback: Boolean = false,
 )
 
 // ── Внутренние render-ready типы (не wire-DTO, не сериализуются) ──
@@ -204,7 +212,10 @@ data class OcHistoryMsg(
     val text: String,
     val id: String? = null,
     val hasAudio: Boolean = false,
-    val createdAt: Long = 0        // серверное время (Unix-секунды) — канонический порядок
+    val createdAt: Long = 0,       // серверное время (Unix-секунды) — канонический порядок
+    val model: String = "",
+    val provider: String = "",
+    val isFallback: Boolean = false,
 )
 
 /** Беседа для переключателя диалогов, render-ready. */
