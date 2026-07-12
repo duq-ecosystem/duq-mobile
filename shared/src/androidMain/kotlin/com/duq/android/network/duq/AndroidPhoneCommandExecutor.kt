@@ -72,11 +72,16 @@ class AndroidPhoneCommandExecutor(
     }
 
     /** Run a forwarded command and return its result payload. Throws on failure. */
+    @Suppress("CyclomaticComplexMethod")
     override suspend fun execute(command: String, params: Map<*, *>): Map<String, Any?> = when (command) {
         "location.get" -> {
-            val loc = locationDataSource.getLastLocation() ?: throw Exception("location unavailable")
-            mapOf("lat" to loc.latitude, "lon" to loc.longitude,
-                "accuracy" to loc.accuracy, "ts" to loc.time)
+            val loc = locationDataSource.getLastLocation() ?: error("location unavailable")
+            mapOf(
+                "lat" to loc.latitude,
+                "lon" to loc.longitude,
+                "accuracy" to loc.accuracy,
+                "ts" to loc.time
+            )
         }
         "notify.show" -> {
             val title = params["title"] as? String ?: "DUQ"
@@ -92,14 +97,16 @@ class AndroidPhoneCommandExecutor(
             logger.d(TAG, "voice.activate: recording (cap ${maxMs}ms)")
             val captured = try {
                 withTimeoutOrNull(maxMs) { audioRecorder.record(file.absolutePath, useVad = true) } ?: run {
-                    audioRecorder.stopRecording(); false
+                    audioRecorder.stopRecording()
+                    false
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                audioRecorder.stopRecording(); throw e
+                audioRecorder.stopRecording()
+                throw e
             }
-            if (!captured || !file.exists() || file.length() <= 0L) throw Exception("no speech captured")
+            if (!captured || !file.exists() || file.length() <= 0L) error("no speech captured")
             val transcript = transcribe(file)
             logger.d(TAG, "voice.activate: transcript len=${transcript.length}")
             mapOf("transcript" to transcript)
@@ -107,13 +114,17 @@ class AndroidPhoneCommandExecutor(
         "camera.snap" -> {
             val facingBack = (params["facing"] as? String) != "front"
             val snap = cameraCapture.snap(facingBack)
-            mapOf("format" to snap.format, "base64" to snap.base64,
-                "width" to snap.width, "height" to snap.height)
+            mapOf(
+                "format" to snap.format,
+                "base64" to snap.base64,
+                "width" to snap.width,
+                "height" to snap.height
+            )
         }
         "screen.record" -> {
             val durationMs = (params["durationMs"] as? Double)?.toLong()?.coerceIn(1000L, 15000L) ?: 3000L
             val consent = ScreenCaptureManager.requestConsent(context)
-                ?: throw Exception("screen capture consent denied")
+                ?: error("screen capture consent denied")
             // Bring up a dedicated mediaProjection FGS for the lifetime of the clip
             // (A14+ requires the type to be live before getMediaProjection()).
             MediaProjectionForegroundService.start(context)
@@ -121,13 +132,17 @@ class AndroidPhoneCommandExecutor(
                 val clip = screenRecorder.record(consent, durationMs) {
                     MediaProjectionForegroundService.instance?.raiseProjectionForeground()
                 }
-                mapOf("format" to clip.format, "base64" to clip.base64,
-                    "durationMs" to clip.durationMs, "hasAudio" to false)
+                mapOf(
+                    "format" to clip.format,
+                    "base64" to clip.base64,
+                    "durationMs" to clip.durationMs,
+                    "hasAudio" to false
+                )
             } finally {
                 MediaProjectionForegroundService.stop(context)
             }
         }
-        else -> throw Exception("unsupported command: $command")
+        else -> throw IllegalArgumentException("unsupported command: $command")
     }
 
     /**
@@ -176,9 +191,9 @@ class AndroidPhoneCommandExecutor(
             .post(body)
             .build()
         sttClient.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) throw Exception("STT ${resp.code}")
+            if (!resp.isSuccessful) error("STT ${resp.code}")
             val text = JSONObject(resp.body?.string() ?: "{}").optString("text", "")
-            if (text.isBlank()) throw Exception("empty transcript") else text
+            if (text.isBlank()) error("empty transcript") else text
         }
     }
 }

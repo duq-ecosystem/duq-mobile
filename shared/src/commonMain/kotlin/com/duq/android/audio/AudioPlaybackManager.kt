@@ -4,17 +4,17 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** Состояние проигрывания аудио-сообщений в чате. */
 enum class PlaybackState {
-    IDLE,       // Not playing anything
-    LOADING,    // Downloading/buffering audio
-    PLAYING,    // Currently playing
-    PAUSED      // Paused mid-playback
+    IDLE, // Not playing anything
+    LOADING, // Downloading/buffering audio
+    PLAYING, // Currently playing
+    PAUSED // Paused mid-playback
 }
 
 /** Текущая инфа проигрывания для UI. */
 data class PlaybackInfo(
     val messageId: String? = null,
     val state: PlaybackState = PlaybackState.IDLE,
-    val progress: Float = 0f,        // 0.0 - 1.0
+    val progress: Float = 0f, // 0.0 - 1.0
     val currentPositionMs: Long = 0,
     val durationMs: Long = 0
 )

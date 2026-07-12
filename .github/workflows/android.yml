@@ -37,19 +37,13 @@ jobs:
         yes | sdkmanager "ndk;26.3.11579264" >/dev/null 2>&1 || true
         ls -d "$ANDROID_SDK_ROOT/ndk/26.3.11579264" && echo "NDK r26d ready"
 
-    # detekt (статический анализ Kotlin). БЕЗ baseline-сокрытия: показывает РЕАЛЬНОЕ
-    # число findings. Легаси-долг на 2026-07-09: ~1047 (shared 1028, androidApp 19) —
-    # НЕ прячем, чиним по TODO (роадмап). Пока чистится — continue-on-error, чтобы APK
-    # собирался, но число findings ЯВНО в логе (не фейковый зелёный).
-    - name: Detekt (Kotlin SAST/lint) — реальное число findings, без baseline
-      run: |
-        set +e
-        ./gradlew detekt --no-daemon
-        code=$?
-        echo "----- detekt weighted issues (реальный легаси-долг, не скрыт) -----"
-        grep -rhE "weighted issues|number of total code smells" **/build/reports/detekt/*.md 2>/dev/null || true
-        if [ $code -ne 0 ]; then echo "::warning::detekt нашёл findings — легаси-долг Kotlin, чинить (см. роадмап)"; fi
-      continue-on-error: true
+    # detekt (статический анализ Kotlin). БЕЗ baseline-сокрытия. Легаси-долг вычищен
+    # 2026-07-12 (было ~1047 → 0): авто-формат (ktlint) + конфиг (Compose-wildcards/iOS-стабы/
+    # тематические имена файлов) + реальные фиксы (исключения/unused/длинные строки) + осознанный
+    # @Suppress на крупные Compose-функции/контроллеры. Теперь ratchet ЖЁСТКИЙ: любой НОВЫЙ finding
+    # роняет сборку (continue-on-error снят). Возвращать долг нельзя.
+    - name: Detekt (Kotlin SAST/lint) — 0 findings, gate жёсткий
+      run: ./gradlew detekt --no-daemon
 
     - name: Upload detekt reports
       if: always()

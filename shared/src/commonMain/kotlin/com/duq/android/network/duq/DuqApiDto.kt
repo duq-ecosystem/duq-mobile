@@ -29,7 +29,9 @@ data class SkillCreateBody(val name: String, val content: String, val descriptio
 
 @Serializable
 data class SkillUpdateBody(
-    val content: String? = null, val description: String? = null, val enabled: Boolean? = null
+    val content: String? = null,
+    val description: String? = null,
+    val enabled: Boolean? = null
 )
 
 // ───────── Крон-задачи — /duq/api/scheduler/tasks ─────────

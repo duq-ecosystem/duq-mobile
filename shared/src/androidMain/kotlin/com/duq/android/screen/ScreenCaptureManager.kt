@@ -37,7 +37,9 @@ object ScreenCaptureManager {
         val activityIntent = Intent(context, ScreenConsentActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         val pi = PendingIntent.getActivity(
-            context, 0, activityIntent,
+            context,
+            0,
+            activityIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         ensureChannel(context)

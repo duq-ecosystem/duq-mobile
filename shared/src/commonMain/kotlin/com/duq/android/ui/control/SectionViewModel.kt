@@ -68,7 +68,7 @@ class SectionViewModel(
     data class AppState(
         val currentName: String,
         val currentCode: Int,
-        val remoteCode: Int = 0,       // >0 и > current ⇒ доступно обновление
+        val remoteCode: Int = 0, // >0 и > current ⇒ доступно обновление
         val installing: Boolean = false,
         val progress: Float = 0f,
     ) { val updateAvailable get() = remoteCode > currentCode }
@@ -90,6 +90,7 @@ class SectionViewModel(
     }
 
     private var appInstalling = false
+
     /** Скачать и установить APK (PackageInstaller подтвердит). */
     fun installApp() {
         if (appInstalling) return

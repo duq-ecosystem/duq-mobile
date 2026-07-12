@@ -60,10 +60,15 @@ class DuqNodeClient(
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+    }
 
     @Volatile private var session: WebSocketSession? = null
+
     @Volatile private var runLoop: Job? = null
+
     @Volatile private var isManualStop = false
 
     private val _state = MutableStateFlow(GatewayConnectionState.DISCONNECTED)
@@ -92,7 +97,10 @@ class DuqNodeClient(
      *  Без этого до-логиновой сокет несёт пустой user_id → сервер не подписывает
      *  устройство на durable-шину, и live-доставка (reasoning/TEXT_DONE) не доходит. */
     fun reconnect() {
-        if (runLoop?.isActive != true) { start(); return }
+        if (runLoop?.isActive != true) {
+            start()
+            return
+        }
         val s = session
         session = null
         if (s != null) scope.launch { runCatching { s.close() } }
@@ -193,7 +201,7 @@ class DuqNodeClient(
     private fun handleChatMessage(frame: JsonObject) {
         val messageId = frame.str("message_id") ?: return
         val role = frame.str("role") ?: "assistant"
-        val content = frame.str("content") ?: ""  // "" = сигнал финализации (NO_REPLY) — не return
+        val content = frame.str("content") ?: "" // "" = сигнал финализации (NO_REPLY) — не return
         val conversationId = frame.str("conversation_id")
         val voice = frame.bool("voice") ?: false
         // Задача 15: лейбл реально ответившей модели (единый кадр chat.message).
@@ -202,7 +210,9 @@ class DuqNodeClient(
         val isFallback = frame.bool("is_fallback") ?: false
         logger.d(
             TAG,
-            "chat.message id=${messageId.take(8)} role=$role len=${content.length} voice=$voice model=$model fb=$isFallback"
+            "chat.message id=${messageId.take(
+                8
+            )} role=$role len=${content.length} voice=$voice model=$model fb=$isFallback"
         )
         chatClient.onIncomingMessage(messageId, role, content, conversationId, voice, model, provider, isFallback)
     }
@@ -234,8 +244,11 @@ class DuqNodeClient(
             put("type", "phone.result")
             put("request_id", requestId)
             put("ok", error == null)
-            if (error != null) put("error", error)
-            else put("payload", anyMapToJson(payload ?: emptyMap()))
+            if (error != null) {
+                put("error", error)
+            } else {
+                put("payload", anyMapToJson(payload ?: emptyMap()))
+            }
         }
         runCatching { ws.send(frame.toString()) }
             .onSuccess { logger.d(TAG, "→ phone.result req=${requestId.take(8)} ok=${error == null}") }

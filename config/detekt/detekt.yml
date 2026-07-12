@@ -23,6 +23,24 @@ complexity:
   TooManyFunctions:
     active: false        # сервисы/клиенты законно крупные
 
+naming:
+  active: true
+  FunctionNaming:
+    # @Composable-функции по конвенции Compose именуются PascalCase (MessageBubble, MainScreen) —
+    # это НЕ нарушение, а стандарт. Дефолт detekt (camelCase) ложно флажит все Composable.
+    ignoreAnnotated: ['Composable']
+  MatchingDeclarationName:
+    # UI-код осознанно группирует связанные декларации под ТЕМАТИЧЕСКИМ именем файла
+    # (Theme.kt→DuqColors, HubScreen.kt→HubSection, CommandPalette.kt→PaletteCommand) —
+    # переименование файла в имя единственной декларации потеряло бы семантику. Отключаем.
+    active: false
+
+empty-blocks:
+  EmptyFunctionBlock:
+    # iosMain — заглушки iOS-реализаций (аудио/VAD/TTS ещё не портированы на iOS): пустое тело
+    # осознанно. Android-заглушки no-op override'ов помечены @Suppress точечно.
+    excludes: ['**/iosMain/**']
+
 style:
   active: true
   MaxLineLength:
@@ -33,6 +51,14 @@ style:
     active: false        # слишком шумно для UI-кода (dp/размеры)
   UnusedPrivateMember:
     active: true         # реальный мусор — ловим
+  WildcardImport:
+    # Compose-конвенция (см. .editorconfig): androidx.compose.* wildcard'ы идиоматичны.
+    excludeImports:
+      - 'java.util.*'
+      - 'androidx.compose.runtime.*'
+      - 'androidx.compose.foundation.layout.*'
+      - 'androidx.compose.material3.*'
+      - 'androidx.compose.animation.core.*'
 
 exceptions:
   active: true
@@ -53,3 +79,11 @@ formatting:
     maxLineLength: 140
   FinalNewline:
     active: true
+  Filename:
+    # iosMain actual-файлы по конвенции KMP названы как expect (AudioRecorder.kt содержит
+    # IosAudioRecorder) — имя файла = имя контракта, не реализации. Осознанно.
+    excludes: ['**/iosMain/**']
+  NoWildcardImports:
+    # Дублирует style/WildcardImport (там заданы compose-исключения). Отключаем ktlint-дубль,
+    # чтобы не держать список compose-пакетов в двух местах; не-compose wildcard'ы ловит WildcardImport.
+    active: false

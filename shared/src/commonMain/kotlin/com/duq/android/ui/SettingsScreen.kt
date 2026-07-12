@@ -37,9 +37,13 @@ fun SettingsScreen(
             Text("Голос", style = MaterialTheme.typography.titleMedium)
 
             Text("Таймаут тишины: ${(silenceTimeout / 1000).roundToInt()}с")
-            Slider(value = silenceTimeout, onValueChange = { silenceTimeout = it },
+            Slider(
+                value = silenceTimeout,
+                onValueChange = { silenceTimeout = it },
                 onValueChangeFinished = { repo.saveSilenceTimeoutMs(silenceTimeout.toLong()) },
-                valueRange = 1000f..4000f, modifier = Modifier.fillMaxWidth())
+                valueRange = 1000f..4000f,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

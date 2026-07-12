@@ -34,10 +34,10 @@ class ScreenRecorder(private val context: Context) {
         durationMs: Long,
         onNeedProjectionForeground: () -> Unit
     ): Clip = withContext(Dispatchers.IO) {
-        onNeedProjectionForeground()  // FGS type mediaProjection must be live first (A14+)
+        onNeedProjectionForeground() // FGS type mediaProjection must be live first (A14+)
         val mpm = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         val projection = mpm.getMediaProjection(consent.resultCode, consent.data)
-            ?: throw IllegalStateException("getMediaProjection returned null")
+            ?: error("getMediaProjection returned null")
 
         val metrics = screenMetrics()
         // Cap resolution to keep the base64 payload sane.
@@ -62,7 +62,10 @@ class ScreenRecorder(private val context: Context) {
             delay(durationMs)
             recorder.stop()
         } finally {
-            runCatching { recorder.reset(); recorder.release() }
+            runCatching {
+                recorder.reset()
+                recorder.release()
+            }
             runCatching { virtualDisplay?.release() }
             runCatching { projection.stop() }
         }
@@ -71,8 +74,14 @@ class ScreenRecorder(private val context: Context) {
         Clip(Base64.encodeToString(bytes, Base64.NO_WRAP), durationMs)
     }
 
+    @Suppress("UnusedParameter")
     private fun buildRecorder(out: File, w: Int, h: Int, dpi: Int): MediaRecorder {
-        val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
+        val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(context)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaRecorder()
+        }
         r.setVideoSource(MediaRecorder.VideoSource.SURFACE)
         r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
         r.setVideoEncoder(MediaRecorder.VideoEncoder.H264)

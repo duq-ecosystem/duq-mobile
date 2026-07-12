@@ -27,8 +27,11 @@ object ChatStepReducer {
         kind: String,
         done: Boolean
     ): List<Message> {
-        val base = if (messages.any { it.id == runId }) messages
-        else messages + Message(id = runId, role = MessageRole.ASSISTANT, content = "", isStreaming = true)
+        val base = if (messages.any { it.id == runId }) {
+            messages
+        } else {
+            messages + Message(id = runId, role = MessageRole.ASSISTANT, content = "", isStreaming = true)
+        }
 
         return base.map { m ->
             if (m.id != runId) return@map m
@@ -53,8 +56,10 @@ object ChatStepReducer {
      *  чтобы шаг без пришедшего `phase:"end"` не завис со спиннером. */
     fun markAllStepsDone(messages: List<Message>, runId: String): List<Message> =
         messages.map { m ->
-            if (m.id == runId && m.steps.any { !it.done })
+            if (m.id == runId && m.steps.any { !it.done }) {
                 m.copy(steps = m.steps.map { it.copy(done = true) })
-            else m
+            } else {
+                m
+            }
         }
 }

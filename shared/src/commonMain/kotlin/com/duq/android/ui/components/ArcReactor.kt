@@ -29,6 +29,7 @@ import com.duq.android.ui.theme.DuqColors
  * Replaces the Iron Man Arc Reactor with an elegant pulsing orb.
  */
 @Composable
+@Suppress("LongMethod")
 fun ArcReactor(
     state: DuqState?,
     modifier: Modifier = Modifier

@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -97,8 +97,11 @@ fun MessagesList(
                     }
                     val progress = if (isCurrentlyPlaying) audioPlaybackInfo.progress else 0f
                     // Длительность — живая из PlaybackInfo (Message.audioDurationMs не заполняется).
-                    val durationMs = if (isCurrentlyPlaying && audioPlaybackInfo.durationMs > 0)
-                        audioPlaybackInfo.durationMs.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() else null
+                    val durationMs = if (isCurrentlyPlaying && audioPlaybackInfo.durationMs > 0) {
+                        audioPlaybackInfo.durationMs.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                    } else {
+                        null
+                    }
 
                     MessageBubble(
                         message = message,

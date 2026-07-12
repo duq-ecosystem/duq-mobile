@@ -1,6 +1,5 @@
 package com.duq.android.ui
 
-import androidx.savedstate.read
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -27,6 +26,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.savedstate.read
 import com.duq.android.audio.AudioPlaybackManager
 import com.duq.android.ui.control.AppChrome
 import com.duq.android.ui.control.CommandPalette
@@ -38,10 +38,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import org.koin.compose.koinInject
 
 sealed class Screen(val route: String) {
-    object Shell : Screen("shell")       // bottom-nav оболочка (Чат/Пульт)
+    object Shell : Screen("shell") // bottom-nav оболочка (Чат/Пульт)
     object Settings : Screen("settings")
-    object Profile : Screen("profile")   // профиль/аккаунты (переключение, admin-список)
-    object Login : Screen("login")       // «войти под другим» поверх профиля
+    object Profile : Screen("profile") // профиль/аккаунты (переключение, admin-список)
+    object Login : Screen("login") // «войти под другим» поверх профиля
 }
 
 /** Вкладки нижней навигации. */
@@ -50,6 +50,7 @@ private val TABS = listOf(
     Tab("tab_hub", Icons.Outlined.GridView, "Пульт"),
     Tab("tab_chat", Icons.Outlined.ChatBubbleOutline, "Чат"),
 )
+
 // Стартуем с чата (основной экран), несмотря на порядок вкладок в баре.
 private const val START_TAB = "tab_chat"
 
@@ -63,6 +64,7 @@ private const val START_TAB = "tab_chat"
 object DeepLinkState {
     // Раздел Пульта (напр. "version" по пушу обновления ядра/приложения).
     val sectionEvents = Channel<String>(Channel.UNLIMITED)
+
     // Вкладка нижней навигации (напр. "tab_chat" по обычному message-пушу).
     val tabEvents = Channel<String>(Channel.UNLIMITED)
 }
@@ -189,8 +191,11 @@ private fun MainShell(
     if (showPalette) {
         CommandPalette(
             onNavigate = { route ->
-                if (route == "settings") onNavigateToSettings()
-                else tabNav.navigate(route) { launchSingleTop = true }
+                if (route == "settings") {
+                    onNavigateToSettings()
+                } else {
+                    tabNav.navigate(route) { launchSingleTop = true }
+                }
             },
             onDismiss = { showPalette = false }
         )
@@ -222,8 +227,13 @@ private fun MainShell(
                                 launchSingleTop = true
                             }
                         },
-                        icon = { Icon(tab.icon, contentDescription = tab.label,
-                            modifier = Modifier.size(22.dp)) },
+                        icon = {
+                            Icon(
+                                tab.icon,
+                                contentDescription = tab.label,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
                         label = { Text(tab.label, fontSize = 11.sp) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = DuqColors.primary,

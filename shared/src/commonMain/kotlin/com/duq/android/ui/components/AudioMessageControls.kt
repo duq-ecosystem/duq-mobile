@@ -31,10 +31,10 @@ import com.duq.android.ui.theme.DuqColors
  * Playback state for audio messages
  */
 enum class AudioPlaybackState {
-    IDLE,       // Not playing
-    LOADING,    // Downloading/buffering
-    PLAYING,    // Currently playing
-    PAUSED      // Paused mid-playback
+    IDLE, // Not playing
+    LOADING, // Downloading/buffering
+    PLAYING, // Currently playing
+    PAUSED // Paused mid-playback
 }
 
 /**

@@ -14,6 +14,7 @@ class SentenceStreamer {
     private var consumed = 0
 
     /** Новые завершённые предложения из [cumulative] (с учётом уже отданного). */
+    @Suppress("NestedBlockDepth")
     fun newSentences(cumulative: String): List<String> {
         if (cumulative.length <= consumed) return emptyList()
         val out = mutableListOf<String>()

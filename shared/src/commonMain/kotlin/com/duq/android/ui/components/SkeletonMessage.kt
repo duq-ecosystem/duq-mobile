@@ -34,7 +34,8 @@ import com.duq.android.ui.theme.DuqColors
 fun SkeletonMessage(modifier: Modifier = Modifier, isUserMessage: Boolean = false) {
     val shimmerBrush = rememberShimmerBrush()
     val bubbleShape = RoundedCornerShape(
-        topStart = 16.dp, topEnd = 16.dp,
+        topStart = 16.dp,
+        topEnd = 16.dp,
         bottomStart = if (isUserMessage) 16.dp else 4.dp,
         bottomEnd = if (isUserMessage) 4.dp else 16.dp
     )
@@ -85,7 +86,8 @@ fun SkeletonConversationItem(modifier: Modifier = Modifier) {
 fun rememberShimmerBrush(): Brush {
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
     val shimmerTranslation by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 1000f,
+        initialValue = 0f,
+        targetValue = 1000f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1200, easing = LinearEasing),
             repeatMode = RepeatMode.Restart

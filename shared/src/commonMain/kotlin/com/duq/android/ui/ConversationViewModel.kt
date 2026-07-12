@@ -14,11 +14,11 @@ import com.duq.android.error.DuqError
 import com.duq.android.logging.Logger
 import com.duq.android.network.TtsClient
 import com.duq.android.network.duq.AgentInfo
-import com.duq.android.network.duq.ModelInfo
 import com.duq.android.network.duq.DuqChatClient
 import com.duq.android.network.duq.DuqConversation
 import com.duq.android.network.duq.DuqIncomingMessage
 import com.duq.android.network.duq.GatewayConnectionState
+import com.duq.android.network.duq.ModelInfo
 import com.duq.android.network.duq.OcAgentStep
 import com.duq.android.network.duq.OcChatEvent
 import com.duq.android.network.duq.OcHistoryMsg
@@ -50,6 +50,7 @@ enum class VoiceInputState { IDLE, RECORDING, TRANSCRIBING }
  * контракт (методы/флоу, см. MainScreen) сохранены 1:1.
  */
 @OptIn(ExperimentalUuidApi::class)
+@Suppress("LargeClass", "LongParameterList")
 class ConversationViewModel(
     private val gatewayClient: DuqChatClient,
     private val audioPlaybackManager: AudioPlaybackManager,
@@ -76,6 +77,7 @@ class ConversationViewModel(
     }
 
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
+
     // Канонический порядок = серверный createdAt (стабильная сортировка: при равном времени
     // сохраняется порядок вставки, история уже приходит ordered). Корень-фикс «сообщение
     // встало не по порядку»: раньше список рос аппендом в порядке ПРИХОДА + Instant.now(),
@@ -162,6 +164,7 @@ class ConversationViewModel(
 
     /** Live-сообщение беседы из push (/duq/ws): рендерим, если относится к активной
      *  беседе и не дубль. */
+    @Suppress("CyclomaticComplexMethod")
     private fun handleIncomingMessage(msg: DuqIncomingMessage) {
         if (msg.content.isBlank()) {
             // Пустой финал (NO_REPLY) единого пути → снять плейсхолдер своего тёрна + спиннер.
@@ -183,7 +186,7 @@ class ConversationViewModel(
             _activeConversationId.value = convId
             loadConversations()
         }
-        if (!seenServerMsgIds.add(msg.messageId)) return  // уже видели этот id
+        if (!seenServerMsgIds.add(msg.messageId)) return // уже видели этот id
         val role = MessageRole.fromApiString(msg.role)
         // Свой тёрн в полёте: ответ ассистента из push заполняет пузырь-плейсхолдер
         // (тот же runId, на нём уже live-висят reasoning-шаги) — НЕ плодим второй пузырь
@@ -193,12 +196,19 @@ class ConversationViewModel(
             if (rid != null && _messages.value.any { it.id == rid }) {
                 _messages.update { msgs ->
                     val upd = msgs.map {
-                        if (it.id == rid) it.copy(
-                            content = ReplyText.clean(msg.content), isStreaming = false,
-                            hasAudio = it.hasAudio || msg.voice,
-                            // Задача 15: лейбл реально ответившей модели (единый путь chat.message).
-                            model = msg.model, provider = msg.provider, isFallback = msg.isFallback,
-                        ) else it
+                        if (it.id == rid) {
+                            it.copy(
+                                content = ReplyText.clean(msg.content),
+                                isStreaming = false,
+                                hasAudio = it.hasAudio || msg.voice,
+                                // Задача 15: лейбл реально ответившей модели (единый путь chat.message).
+                                model = msg.model,
+                                provider = msg.provider,
+                                isFallback = msg.isFallback,
+                            )
+                        } else {
+                            it
+                        }
                     }
                     ChatStepReducer.markAllStepsDone(upd, rid)
                 }
@@ -249,9 +259,12 @@ class ConversationViewModel(
         if (oldId != null && oldId != msg.messageId) audioPlaybackManager.renameCache(oldId, msg.messageId)
         _messages.update { list ->
             val idx = list.indexOfLast { it.role == MessageRole.ASSISTANT && it.content.trim() == norm }
-            if (idx < 0) list
-            else list.mapIndexed { i, m ->
-                if (i == idx) m.copy(id = msg.messageId, hasAudio = m.hasAudio || msg.voice) else m
+            if (idx < 0) {
+                list
+            } else {
+                list.mapIndexed { i, m ->
+                    if (i == idx) m.copy(id = msg.messageId, hasAudio = m.hasAudio || msg.voice) else m
+                }
             }
         }
     }
@@ -337,7 +350,10 @@ class ConversationViewModel(
             if (_activeAgentId.value != agentId) return@launch
             _conversations.value = list
             val first = list.firstOrNull()
-            if (first == null) { pendingNewConversation = true; return@launch }
+            if (first == null) {
+                pendingNewConversation = true
+                return@launch
+            }
             _activeConversationId.value = first.id
             _activeConversationTitle.value = first.dateLabel
             pendingNewConversation = false
@@ -406,7 +422,8 @@ class ConversationViewModel(
         viewModelScope.launch {
             // Только диалоги активного агента (раздельные истории per agent).
             val list = runCatching { gatewayClient.listConversations(_activeAgentId.value) }.getOrElse {
-                logger.w(TAG, "listConversations failed: ${it.message}"); return@launch
+                logger.w(TAG, "listConversations failed: ${it.message}")
+                return@launch
             }
             _conversations.value = list
         }
@@ -423,7 +440,8 @@ class ConversationViewModel(
         _isProcessing.value = false
         viewModelScope.launch {
             val history = runCatching { gatewayClient.loadMessages(id) }.getOrElse {
-                logger.e(TAG, "loadMessages($id) failed: ${it.message}", it); emptyList()
+                logger.e(TAG, "loadMessages($id) failed: ${it.message}", it)
+                emptyList()
             }
             // Применяем только если пользователь не переключился снова за время загрузки.
             if (_activeConversationId.value != id) return@launch
@@ -466,7 +484,8 @@ class ConversationViewModel(
                     if (_agents.value.isEmpty()) loadAgents()
                     if (_models.value.isEmpty()) loadModels()
                     val list = runCatching { gatewayClient.listConversations() }.getOrElse {
-                        logger.w(TAG, "restore listConversations failed: ${it.message}"); emptyList()
+                        logger.w(TAG, "restore listConversations failed: ${it.message}")
+                        emptyList()
                     }
                     if (list.isNotEmpty()) _conversations.value = list
                     // Сеем историю ТОЛЬКО в пустой чат (не трогаем активную беседу с сообщениями
@@ -478,7 +497,8 @@ class ConversationViewModel(
                             _activeConversationId.value = target.id
                             _activeConversationTitle.value = target.dateLabel
                             val history = runCatching { gatewayClient.loadMessages(target.id) }.getOrElse {
-                                logger.w(TAG, "restore loadMessages failed: ${it.message}"); emptyList()
+                                logger.w(TAG, "restore loadMessages failed: ${it.message}")
+                                emptyList()
                             }
                             logger.i(TAG, "restore: conv=${target.id} ${history.size} messages")
                             if (history.isNotEmpty()) {
@@ -522,6 +542,7 @@ class ConversationViewModel(
     }
 
     /** Short, friendly label for a tool/command step (icon + trimmed title). */
+    @Suppress("CyclomaticComplexMethod")
     private fun stepLabel(step: OcAgentStep): String {
         val t = step.title.lowercase()
         val icon = when {
@@ -552,8 +573,11 @@ class ConversationViewModel(
                     // A tool step may have already created this bubble (steps can
                     // precede the first text delta) — only insert if it's absent.
                     _messages.update { msgs ->
-                        if (msgs.any { it.id == event.runId }) msgs
-                        else msgs + Message(id = event.runId, role = MessageRole.ASSISTANT, content = "", isStreaming = true)
+                        if (msgs.any { it.id == event.runId }) {
+                            msgs
+                        } else {
+                            msgs + Message(id = event.runId, role = MessageRole.ASSISTANT, content = "", isStreaming = true)
+                        }
                     }
                     _isProcessing.value = true
                     // Bind this reply to the voice turn that triggered it, so only it
@@ -568,7 +592,8 @@ class ConversationViewModel(
                 // Стрим кумулятивный: каждая дельта несёт ВЕСЬ текст (авторитетно, стойко
                 // к реордеру). streamBuffer хранит последний кумулятив для финал-фолбэка.
                 val cumulative = event.fullText ?: return
-                streamBuffer.clear(); streamBuffer.append(cumulative)
+                streamBuffer.clear()
+                streamBuffer.append(cumulative)
                 val live = ReplyText.clean(cumulative)
                 _messages.update { msgs ->
                     msgs.map { if (it.id == event.runId) it.copy(content = live) else it }
@@ -581,13 +606,24 @@ class ConversationViewModel(
             "aborted", "error" -> {
                 _isProcessing.value = false
                 val errText = event.errorMessage ?: "Error"
-                currentRunId = null; streamBuffer.clear(); _isProcessing.value = false
+                currentRunId = null
+                streamBuffer.clear()
+                _isProcessing.value = false
                 finalizedRunIds.add(event.runId)
                 if (streamingTts.isStreaming(event.runId)) streamingTts.cancel()
                 if (event.runId == pendingVoiceReplyRunId) pendingVoiceReplyRunId = null
                 lastInputWasVoice = false
                 _messages.update { msgs ->
-                    val updated = msgs.map { if (it.id == event.runId) it.copy(content = it.content.ifEmpty { "[$errText]" }, isStreaming = false) else it }
+                    val updated = msgs.map {
+                        if (it.id == event.runId) {
+                            it.copy(
+                                content = it.content.ifEmpty { "[$errText]" },
+                                isStreaming = false
+                            )
+                        } else {
+                            it
+                        }
+                    }
                     ChatStepReducer.markAllStepsDone(updated, event.runId)
                 }
                 _error.value = DuqError.NetworkError(errText)
@@ -618,7 +654,10 @@ class ConversationViewModel(
         viewModelScope.launch {
             try {
                 gatewayClient.sendMessage(
-                    text, runId, conversationId = convId, newConversation = isNew,
+                    text,
+                    runId,
+                    conversationId = convId,
+                    newConversation = isNew,
                     agentId = _activeAgentId.value,
                     modelId = _activeModelId.value.ifBlank { null },
                 )
@@ -655,12 +694,18 @@ class ConversationViewModel(
                 // useVad=false: hold-to-talk — the user controls the endpoint, so natural
                 // pauses must not cut the recording short.
                 val captured = audioRecorder.record(path, useVad = false)
-                if (!captured) { removePendingVoice(); return@launch }
+                if (!captured) {
+                    removePendingVoice()
+                    return@launch
+                }
 
                 _voiceInput.value = VoiceInputState.TRANSCRIBING
                 updatePendingVoice { it.copy(voicePhase = VoicePhase.TRANSCRIBING) }
                 val transcript = gatewayClient.transcribeAudio(path)
-                if (transcript.isBlank()) { removePendingVoice(); return@launch }
+                if (transcript.isBlank()) {
+                    removePendingVoice()
+                    return@launch
+                }
 
                 // Фаза гаснет — пузырь становится обычным сообщением с транскриптом.
                 updatePendingVoice {
@@ -674,7 +719,7 @@ class ConversationViewModel(
                 pendingNewConversation = false
                 gatewayClient.sendMessage(
                     transcript, conversationId = convId, newConversation = isNew,
-                    agentId = _activeAgentId.value,   // голос тоже уходит выбранному агенту
+                    agentId = _activeAgentId.value, // голос тоже уходит выбранному агенту
                     modelId = _activeModelId.value.ifBlank { null },
                 )
                 _isProcessing.value = true
@@ -726,7 +771,12 @@ class ConversationViewModel(
      * РЕ-СИНТЕЗ on-device по тексту сообщения под тем же messageId, затем играем.
      */
     fun playMessageAudio(messageId: String) {
-        logger.d(TAG, "playMessageAudio tap id=${messageId.take(8)} togonPlaying=${streamingTts.isPlaying()} cached=${audioPlaybackManager.isCached(messageId)}")
+        logger.d(
+            TAG,
+            "playMessageAudio tap id=${messageId.take(
+                8
+            )} togonPlaying=${streamingTts.isPlaying()} cached=${audioPlaybackManager.isCached(messageId)}"
+        )
         // Живой догон сейчас озвучивает → кнопка = СТОП. Иначе playOrToggle запустил бы
         // плеер ПОВЕРХ догона (двойной звук) — догон был неуправляем кнопкой.
         if (streamingTts.isPlaying()) {
@@ -741,7 +791,7 @@ class ConversationViewModel(
         }
         logger.d(TAG, "playMessageAudio → ре-синтез (кэша нет)")
         val msg = _messages.value.firstOrNull { it.id == messageId } ?: return
-        if (msg.content.isBlank() || msg.isAudioLoading) return  // guard двойного тапа во время синтеза
+        if (msg.content.isBlank() || msg.isAudioLoading) return // guard двойного тапа во время синтеза
         val originConv = _activeConversationId.value
         setAudioLoading(messageId, true)
         viewModelScope.launch {
@@ -796,8 +846,12 @@ class ConversationViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                logger.e(TAG, "TTS failed: ${e.message}"); null
-            } ?: run { logger.e(TAG, "speakReply: no audio (both null)"); return@launch }
+                logger.e(TAG, "TTS failed: ${e.message}")
+                null
+            } ?: run {
+                logger.e(TAG, "speakReply: no audio (both null)")
+                return@launch
+            }
             logger.i(TAG, "speakReply play id=${messageId.take(8)}")
             // Помечаем сообщение как голосовое → в пузыре появляется кнопка play/pause
             // (как в Telegram): можно переслушать ответ.

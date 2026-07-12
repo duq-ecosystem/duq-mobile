@@ -19,8 +19,11 @@ class VoiceActivityDetector(
     }
 
     private var vadSilero: VadSilero? = null
-    @Volatile private var lastSpeechTime: Long = 0  // Volatile for thread-safe access across audio/main threads
+
+    @Volatile private var lastSpeechTime: Long = 0 // Volatile for thread-safe access across audio/main threads
+
     @Volatile private var recordingStartTime: Long = 0
+
     @Volatile private var isRecording = false
     private var frameCount = 0
 

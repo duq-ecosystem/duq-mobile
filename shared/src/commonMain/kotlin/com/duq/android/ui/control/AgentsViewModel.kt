@@ -70,7 +70,9 @@ class AgentsViewModel(
     fun createAgent(id: String, displayName: String, description: String, allowedTools: List<String>) =
         mutate {
             rest.createAgent(
-                id.trim(), displayName.trim(), description.trim(),
+                id.trim(),
+                displayName.trim(),
+                description.trim(),
                 allowedTools.ifEmpty { null }
             )
         }

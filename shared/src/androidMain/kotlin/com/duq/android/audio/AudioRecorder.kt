@@ -27,7 +27,9 @@ class AudioRecorder(
     }
 
     private var audioRecord: AudioRecord? = null
+
     @Volatile private var isRecording = false
+
     // Track whether the VAD was actually started, so stop paths only stop it when
     // it was running (push-to-talk uses useVad=false and never starts it).
     @Volatile private var vadActive = false
@@ -63,7 +65,10 @@ class AudioRecorder(
             FileOutputStream(rawFile).use { outputStream ->
                 audioRecord?.startRecording()
                 isRecording = true
-                if (useVad) { vad.startRecording(); vadActive = true }
+                if (useVad) {
+                    vad.startRecording()
+                    vadActive = true
+                }
 
                 val buffer = ShortArray(bufferSize / 2)
                 val recordingStartTime = System.currentTimeMillis()
@@ -97,7 +102,8 @@ class AudioRecorder(
                         // (after a min recording time). Push-to-talk ignores the VAD
                         // and runs until stopRecording() flips isRecording.
                         if (useVad && elapsedMs >= AppConfig.MIN_RECORDING_MS &&
-                            vad.processAudioBuffer(buffer, readSize)) {
+                            vad.processAudioBuffer(buffer, readSize)
+                        ) {
                             Log.d(TAG, "✅ Silence detected after ${elapsedMs}ms ($bufferCount buffers)")
                             break
                         }
@@ -117,7 +123,6 @@ class AudioRecorder(
 
             rawFile.delete()
             return@withContext false
-
         } catch (e: Exception) {
             Log.e(TAG, "Error recording audio", e)
             stopRecordingInternal()
@@ -127,13 +132,19 @@ class AudioRecorder(
 
     override fun stopRecording() {
         isRecording = false
-        if (vadActive) { vad.stopRecording(); vadActive = false }
+        if (vadActive) {
+            vad.stopRecording()
+            vadActive = false
+        }
     }
 
     private fun stopRecordingInternal() {
         try {
             isRecording = false
-            if (vadActive) { vad.stopRecording(); vadActive = false }
+            if (vadActive) {
+                vad.stopRecording()
+                vadActive = false
+            }
             audioRecord?.stop()
             audioRecord?.release()
             audioRecord = null

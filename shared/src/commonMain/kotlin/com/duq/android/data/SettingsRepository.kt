@@ -36,8 +36,8 @@ class SettingsRepository(private val settings: Settings) {
         private const val KEY_WAKE_WORD_SENSITIVITY = "wake_word_sensitivity"
         private const val KEY_SILENCE_TIMEOUT_MS = "silence_timeout_ms"
         private const val KEY_LAST_REPORTED_LOCATION = "last_reported_location"
-        private const val KEY_ACCOUNTS = "duq_accounts"        // мультиаккаунт: список сохранённых
-        private const val KEY_ACTIVE_USER = "duq_active_user"   // активный user_id
+        private const val KEY_ACCOUNTS = "duq_accounts" // мультиаккаунт: список сохранённых
+        private const val KEY_ACTIVE_USER = "duq_active_user" // активный user_id
         private const val KEY_SERVER_TOKEN = "duq_server_token"
 
         const val DEFAULT_WAKE_WORD_SENSITIVITY = 0.9f
@@ -100,7 +100,10 @@ class SettingsRepository(private val settings: Settings) {
         val uid = getUserId()
         val list = loadAccounts()
         val i = list.indexOfFirst { it.userId == uid }
-        if (i >= 0) { list[i] = list[i].copy(name = name); storeAccounts(list) }
+        if (i >= 0) {
+            list[i] = list[i].copy(name = name)
+            storeAccounts(list)
+        }
     }
 
     // Общий токен системы (edge-token семьи), вводится юзером на экране регистрации при первом

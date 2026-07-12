@@ -23,7 +23,8 @@ class DefaultBeepPlayer : BeepPlayer {
         val toneGenerator = try {
             ToneGenerator(AudioManager.STREAM_MUSIC, BEEP_VOLUME)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create tone generator", e); return
+            Log.e(TAG, "Failed to create tone generator", e)
+            return
         }
         try {
             toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, BEEP_DURATION_MS)

@@ -23,7 +23,11 @@ import com.duq.android.ui.HUB_SECTIONS
 import com.duq.android.ui.theme.DuqColors
 
 /** Команда палитры: ярлык + куда вести (route внутреннего tab-nav или "settings"). */
-data class PaletteCommand(val icon: androidx.compose.ui.graphics.vector.ImageVector, val label: String, val route: String)
+data class PaletteCommand(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: String,
+    val route: String
+)
 
 private val STATIC_COMMANDS = listOf(
     PaletteCommand(Icons.Outlined.ChatBubbleOutline, "Чат", "tab_chat"),
@@ -45,8 +49,11 @@ private val ALL_COMMANDS: List<PaletteCommand> = STATIC_COMMANDS +
 fun CommandPalette(onNavigate: (String) -> Unit, onDismiss: () -> Unit) {
     var query by remember { mutableStateOf("") }
     val filtered = remember(query) {
-        if (query.isBlank()) ALL_COMMANDS
-        else ALL_COMMANDS.filter { it.label.contains(query, ignoreCase = true) }
+        if (query.isBlank()) {
+            ALL_COMMANDS
+        } else {
+            ALL_COMMANDS.filter { it.label.contains(query, ignoreCase = true) }
+        }
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -77,12 +84,19 @@ fun CommandPalette(onNavigate: (String) -> Unit, onDismiss: () -> Unit) {
                     Row(
                         modifier = Modifier.fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
-                            .clickable { onNavigate(cmd.route); onDismiss() }
+                            .clickable {
+                                onNavigate(cmd.route)
+                                onDismiss()
+                            }
                             .padding(horizontal = 10.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(cmd.icon, contentDescription = cmd.label, tint = DuqColors.textSecondary,
-                            modifier = Modifier.size(20.dp))
+                        Icon(
+                            cmd.icon,
+                            contentDescription = cmd.label,
+                            tint = DuqColors.textSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(Modifier.width(12.dp))
                         Text(cmd.label, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = DuqColors.textPrimary)
                     }

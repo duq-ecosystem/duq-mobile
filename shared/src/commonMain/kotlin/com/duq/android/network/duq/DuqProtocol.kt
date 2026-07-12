@@ -119,9 +119,9 @@ data class AgentsResponse(
 /** Одна модель из цепи ядра (GET /duq/api/models) — для пикера модели в чате (Задача 16). */
 @Serializable
 data class ModelInfo(
-    val id: String,               // "primary" | "fallback_1" … — уходит как model_id в запрос
-    val model: String,            // напр. "openai/gpt-oss-120b-Turbo"
-    val provider: String,         // хост, напр. "api.deepinfra.com"
+    val id: String, // "primary" | "fallback_1" … — уходит как model_id в запрос
+    val model: String, // напр. "openai/gpt-oss-120b-Turbo"
+    val provider: String, // хост, напр. "api.deepinfra.com"
     @SerialName("is_primary") val isPrimary: Boolean = false
 )
 
@@ -151,7 +151,7 @@ data class ConversationDto(
 @Serializable
 data class HistoryMsg(
     val id: String? = null,
-    val role: String,    // "user" | "assistant"
+    val role: String, // "user" | "assistant"
     val content: String,
     @SerialName("has_audio") val hasAudio: Boolean = false,
     // Серверное время создания (Unix-секунды) — канонический порядок сообщений.
@@ -168,7 +168,7 @@ data class HistoryMsg(
 @Serializable
 data class DuqIncomingMessage(
     val messageId: String,
-    val role: String,    // "user" | "assistant"
+    val role: String, // "user" | "assistant"
     val content: String,
     val conversationId: String? = null,
     val voice: Boolean = false,
@@ -185,7 +185,7 @@ data class DuqIncomingMessage(
  *  (инкрементальных дельт в протоколе нет). */
 data class OcChatEvent(
     val runId: String,
-    val state: String,          // "delta" | "final" | "error" | "aborted"
+    val state: String, // "delta" | "final" | "error" | "aborted"
     val fullText: String? = null,
     val errorMessage: String? = null,
     // Финал: модель решила озвучить (set_response_mode voice) → клиент синтезирует TTS on-device.
@@ -200,10 +200,10 @@ data class OcChatEvent(
 data class OcAgentStep(
     val runId: String,
     val itemId: String,
-    val kind: String,    // "tool" | "command"
+    val kind: String, // "tool" | "command"
     val title: String,
-    val status: String,  // "running" | "completed" | "failed"
-    val phase: String    // "update" | "end"
+    val status: String, // "running" | "completed" | "failed"
+    val phase: String // "update" | "end"
 )
 
 /** Одно прошлое сообщение из истории беседы, render-ready. */
@@ -212,7 +212,7 @@ data class OcHistoryMsg(
     val text: String,
     val id: String? = null,
     val hasAudio: Boolean = false,
-    val createdAt: Long = 0,       // серверное время (Unix-секунды) — канонический порядок
+    val createdAt: Long = 0, // серверное время (Unix-секунды) — канонический порядок
     val model: String = "",
     val provider: String = "",
     val isFallback: Boolean = false,

@@ -7,7 +7,6 @@ import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
-import kotlin.concurrent.withLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -16,6 +15,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.BufferedInputStream
 import java.io.File
+import kotlin.concurrent.withLock
 
 /**
  * Android-реализация [LocalTts] — on-device TTS через sherpa-onnx (k2-fsa) + Piper VITS RU.
@@ -38,6 +38,7 @@ class TtsLocal(
     }
 
     @Volatile private var engine: OfflineTts? = null
+
     // ReentrantLock (а не synchronized): release() из system memory-callback (Main) должен
     // НЕ блокироваться, если идёт generate (стриминг зовёт его часто) — иначе ANR. release
     // использует tryLock. Реентрантен (generate внутри держит лок, ensureEngine — вложенно).
@@ -51,6 +52,8 @@ class TtsLocal(
                 if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE) release()
             }
             override fun onLowMemory() = release()
+
+            @Suppress("EmptyFunctionBlock")
             override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {}
         })
     }
@@ -86,14 +89,20 @@ class TtsLocal(
         try {
             val req = Request.Builder().url(AppConfig.TTS_MODEL_URL).build()
             httpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) { Log.e(TAG, "model download HTTP ${resp.code}"); return@withContext false }
+                if (!resp.isSuccessful) {
+                    Log.e(TAG, "model download HTTP ${resp.code}")
+                    return@withContext false
+                }
                 val body = resp.body ?: return@withContext false
                 val total = body.contentLength().coerceAtLeast(1L)
                 body.byteStream().use { input ->
                     archive.outputStream().use { output ->
-                        val buf = ByteArray(64 * 1024); var read: Int; var done = 0L
+                        val buf = ByteArray(64 * 1024)
+                        var read: Int
+                        var done = 0L
                         while (input.read(buf).also { read = it } >= 0) {
-                            output.write(buf, 0, read); done += read
+                            output.write(buf, 0, read)
+                            done += read
                             onProgress(done.toFloat() / total)
                         }
                     }
@@ -101,16 +110,21 @@ class TtsLocal(
             }
             extractTarBz2(archive, modelDir())
             archive.delete()
-            if (!isModelReady()) { Log.e(TAG, "model not ready after extract"); return@withContext false }
+            if (!isModelReady()) {
+                Log.e(TAG, "model not ready after extract")
+                return@withContext false
+            }
             Log.i(TAG, "TTS model ready: ${modelFile().length()} bytes")
             true
         } catch (e: Exception) {
             Log.e(TAG, "model download/extract failed: ${e.message}")
-            archive.delete(); false
+            archive.delete()
+            false
         }
     }
 
     /** Распаковывает .tar.bz2 [archive] в [dest] (плоско по путям записей tar). */
+    @Suppress("NestedBlockDepth")
     private fun extractTarBz2(archive: File, dest: File) {
         TarArchiveInputStream(BZip2CompressorInputStream(BufferedInputStream(archive.inputStream()))).use { tar ->
             var entry = tar.nextEntry
@@ -118,7 +132,7 @@ class TtsLocal(
                 val out = File(dest, entry.name)
                 // Защита от path-traversal (zip-slip) — запись обязана лежать внутри dest.
                 if (!out.canonicalPath.startsWith(dest.canonicalPath + File.separator)) {
-                    throw IllegalStateException("tar entry escapes dest: ${entry.name}")
+                    error("tar entry escapes dest: ${entry.name}")
                 }
                 if (entry.isDirectory) {
                     out.mkdirs()
@@ -182,7 +196,8 @@ class TtsLocal(
                 TtsSamples(pcm, audio.sampleRate)
             }
         } catch (e: Exception) {
-            Log.w(TAG, "synthesizeSamples failed: ${e.message}"); null
+            Log.w(TAG, "synthesizeSamples failed: ${e.message}")
+            null
         }
     }
 
@@ -198,7 +213,7 @@ class TtsLocal(
         }
         // GeneratedAudio.save пишет валидный WAV (PCM16) на нужном sampleRate — тот же формат,
         // что отдавал серверный Silero, плеер играет его без изменений.
-        if (!audio.save(out.absolutePath)) throw IllegalStateException("WAV save failed")
+        if (!audio.save(out.absolutePath)) error("WAV save failed")
         out
     }
 
@@ -207,7 +222,10 @@ class TtsLocal(
      *  (движок освободится на следующем trim/лениво), главное — не висеть на Main → ANR. */
     override fun release() {
         if (lock.tryLock()) {
-            try { engine?.release(); engine = null } finally { lock.unlock() }
+            try {
+                engine?.release()
+                engine = null
+            } finally { lock.unlock() }
         } else {
             Log.d(TAG, "release пропущен — идёт синтез")
         }

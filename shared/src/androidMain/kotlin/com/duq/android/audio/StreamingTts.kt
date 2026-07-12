@@ -62,6 +62,7 @@ class StreamingTts(
     override fun isPlaying(): Boolean = playingNow
 
     /** Старт догона для голосового тёрна. Идемпотентно для того же runId. */
+    @Suppress("CyclomaticComplexMethod", "LoopWithTooManyJumpStatements", "ComplexCondition")
     override fun start(runId: String) {
         if (activeRunId == runId) return
         cancel()
@@ -86,7 +87,10 @@ class StreamingTts(
                         val text = ReplyText.clean(raw)
                         if (text.isBlank()) continue
                         val s = ttsLocal.synthesizeSamples(text)
-                        if (s == null) { logger.d(TAG, "synth null (движок не готов) — skip"); continue }
+                        if (s == null) {
+                            logger.d(TAG, "synth null (движок не готов) — skip")
+                            continue
+                        }
                         logger.d(TAG, "synth '${text.take(28)}' samples=${s.pcm.size}")
                         pcmQueue.send(s)
                     }
@@ -101,13 +105,22 @@ class StreamingTts(
                     val t = myTrack ?: run {
                         sampleRate = s.sampleRate
                         newTrack(sampleRate).apply { play() }
-                            .also { synchronized(trackLock) { myTrack = it; track = it; playingNow = true } }
+                            .also {
+                                synchronized(trackLock) {
+                                    myTrack = it
+                                    track = it
+                                    playingNow = true
+                                }
+                            }
                             .also { logger.d(TAG, "AudioTrack play sr=$sampleRate") }
                     }
                     // WRITE_BLOCKING явно; проверяем возврат — при ошибке (потеря focus/HAL)
                     // НЕ увеличиваем totalFrames (иначе drain зависнет), выходим.
                     val written = t.write(s.pcm, 0, s.pcm.size, AudioTrack.WRITE_BLOCKING)
-                    if (written <= 0) { logger.e(TAG, "AudioTrack.write error=$written — стоп"); break }
+                    if (written <= 0) {
+                        logger.e(TAG, "AudioTrack.write error=$written — стоп")
+                        break
+                    }
                     totalFrames += written
                     replay.add(s.pcm)
                 }
@@ -120,7 +133,8 @@ class StreamingTts(
                         t.playState == AudioTrack.PLAYSTATE_PLAYING &&
                         t.playbackHeadPosition < totalFrames
                     ) {
-                        delay(50); waited += 50
+                        delay(50)
+                        waited += 50
                     }
                 }
             } catch (e: CancellationException) {
@@ -129,7 +143,12 @@ class StreamingTts(
                 logger.e(TAG, "догон stream error: ${e.message}")
             } finally {
                 producer.cancel()
-                myTrack?.let { try { it.stop(); it.release() } catch (_: Exception) {} }
+                myTrack?.let {
+                    try {
+                        it.stop()
+                        it.release()
+                    } catch (_: Exception) {}
+                }
                 // Сбрасываем общие поля, только если их ещё не перехватил новый прогон.
                 synchronized(trackLock) {
                     if (track === myTrack) {
@@ -176,9 +195,14 @@ class StreamingTts(
 
     private fun newTrack(sampleRate: Int): AudioTrack {
         val minBuf = AudioTrack.getMinBufferSize(
-            sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT
+            sampleRate,
+            AudioFormat.CHANNEL_OUT_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
         )
-        val bufBytes = maxOf(minBuf, sampleRate * 4) // ~2с буфер (sampleRate×2сэмпла × 2 байта) — запас от джиттера, чтобы не было прерываний
+        val bufBytes = maxOf(
+            minBuf,
+            sampleRate * 4
+        ) // ~2с буфер (sampleRate×2сэмпла × 2 байта) — запас от джиттера, чтобы не было прерываний
         return AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()

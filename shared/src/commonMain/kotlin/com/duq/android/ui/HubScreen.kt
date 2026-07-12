@@ -17,10 +17,10 @@ import androidx.compose.material.icons.outlined.SystemUpdateAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,8 +62,14 @@ fun HubScreen(onOpenSection: (String) -> Unit, onOpenPalette: () -> Unit = {}) {
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Search, contentDescription = "Поиск", tint = DuqColors.textSecondary,
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpenPalette).padding(8.dp).size(22.dp))
+                Icon(
+                    Icons.Outlined.Search,
+                    contentDescription = "Поиск",
+                    tint = DuqColors.textSecondary,
+                    modifier = Modifier.clip(
+                        RoundedCornerShape(8.dp)
+                    ).clickable(onClick = onOpenPalette).padding(8.dp).size(22.dp)
+                )
                 GlobalTopActions()
             }
         }
@@ -92,8 +98,12 @@ private fun HubTile(section: HubSection, onClick: () -> Unit) {
             .padding(14.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Icon(section.icon, contentDescription = section.title,
-            tint = DuqColors.textSecondary, modifier = Modifier.size(26.dp))
+        Icon(
+            section.icon,
+            contentDescription = section.title,
+            tint = DuqColors.textSecondary,
+            modifier = Modifier.size(26.dp)
+        )
         Text(
             text = section.title,
             fontSize = 15.sp,

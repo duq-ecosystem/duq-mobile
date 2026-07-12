@@ -49,9 +49,12 @@ class AndroidAppUpdateController(
     override val currentVersionCode: Int
         get() = runCatching {
             val info = context.packageManager.getPackageInfo(context.packageName, 0)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 info.longVersionCode.toInt()
-            else @Suppress("DEPRECATION") info.versionCode
+            } else {
+                @Suppress("DEPRECATION")
+                info.versionCode
+            }
         }.getOrDefault(0)
 
     // HTTP/1.1 принудительно: OkHttp HTTP/2-стрим может зависнуть на больших телах за
@@ -80,7 +83,8 @@ class AndroidAppUpdateController(
     override suspend fun checkAvailable(): Int = withContext(Dispatchers.IO) {
         try {
             val remoteCode = fetchRemoteVersionCode() ?: run {
-                logger.w(TAG, "releases/latest вернул null"); return@withContext 0
+                logger.w(TAG, "releases/latest вернул null")
+                return@withContext 0
             }
             logger.i(TAG, "Remote versionCode=$remoteCode, local=$currentVersionCode")
             if (remoteCode <= currentVersionCode) {
@@ -95,7 +99,8 @@ class AndroidAppUpdateController(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.e(TAG, "checkAvailable failed: ${e.message}", e); 0
+            logger.e(TAG, "checkAvailable failed: ${e.message}", e)
+            0
         }
     }
 
@@ -106,11 +111,15 @@ class AndroidAppUpdateController(
                 val v = updatePrefs.getInt(KEY_AVAILABLE_VERSION, 0)
                 if (v <= currentVersionCode) return@withContext
                 if (notificationsEnabled) showDownloadingNotification(v)
-                val apkFile = downloadApk(onProgress) ?: run { nm.cancel(NOTIFY_ID); return@withContext }
+                val apkFile = downloadApk(onProgress) ?: run {
+                    nm.cancel(NOTIFY_ID)
+                    return@withContext
+                }
                 nm.cancel(NOTIFY_ID)
                 installApk(apkFile, v)
             } catch (e: CancellationException) {
-                nm.cancel(NOTIFY_ID); throw e
+                nm.cancel(NOTIFY_ID)
+                throw e
             } catch (e: Exception) {
                 logger.e(TAG, "downloadAndInstall failed: ${e.message}", e)
                 nm.cancel(NOTIFY_ID)
@@ -121,7 +130,10 @@ class AndroidAppUpdateController(
     /** GitHub release JSON (приватный репо → нужен read-only токен). */
     private fun fetchLatestReleaseJson(): JSONObject? {
         val token = AppConfig.UPDATE_GITHUB_TOKEN
-        if (token.isBlank()) { logger.w(TAG, "GH_RELEASE_TOKEN пуст — self-update отключён"); return null }
+        if (token.isBlank()) {
+            logger.w(TAG, "GH_RELEASE_TOKEN пуст — self-update отключён")
+            return null
+        }
         val request = Request.Builder()
             .url(AppConfig.UPDATE_LATEST_RELEASE_URL)
             .header("Authorization", "Bearer $token")
@@ -130,7 +142,10 @@ class AndroidAppUpdateController(
             .header("Cache-Control", "no-cache")
             .build()
         return client.newCall(request).execute().use { resp ->
-            if (!resp.isSuccessful) { logger.w(TAG, "releases/latest HTTP ${resp.code}"); return null }
+            if (!resp.isSuccessful) {
+                logger.w(TAG, "releases/latest HTTP ${resp.code}")
+                return null
+            }
             resp.body?.string()?.let { JSONObject(it) }
         }
     }
@@ -142,6 +157,7 @@ class AndroidAppUpdateController(
         return Regex("build-(\\d+)").find(tag)?.groupValues?.getOrNull(1)?.toIntOrNull()?.takeIf { it > 0 }
     }
 
+    @Suppress("CyclomaticComplexMethod", "NestedBlockDepth", "ReturnCount", "LoopWithTooManyJumpStatements")
     private fun downloadApk(onProgress: (Float) -> Unit): File? {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
         val apkFile = File(dir, APK_FILENAME)
@@ -150,15 +166,24 @@ class AndroidAppUpdateController(
         // (browser_download_url 404 без сессии). Atomic .tmp → rename: прерванная загрузка
         // не оставит частичный файл, который завалит установку.
         val token = AppConfig.UPDATE_GITHUB_TOKEN
-        if (token.isBlank()) { logger.w(TAG, "GH_RELEASE_TOKEN пуст — нечем качать"); return null }
+        if (token.isBlank()) {
+            logger.w(TAG, "GH_RELEASE_TOKEN пуст — нечем качать")
+            return null
+        }
         val rel = fetchLatestReleaseJson() ?: return null
         val assets = rel.optJSONArray("assets") ?: return null
         var assetUrl: String? = null
         for (i in 0 until assets.length()) {
             val a = assets.optJSONObject(i) ?: continue
-            if (a.optString("name") == APK_ASSET_NAME) { assetUrl = a.optString("url"); break }
+            if (a.optString("name") == APK_ASSET_NAME) {
+                assetUrl = a.optString("url")
+                break
+            }
         }
-        if (assetUrl.isNullOrBlank()) { logger.w(TAG, "$APK_ASSET_NAME не найден в релизе"); return null }
+        if (assetUrl.isNullOrBlank()) {
+            logger.w(TAG, "$APK_ASSET_NAME не найден в релизе")
+            return null
+        }
         val request = Request.Builder()
             .url(assetUrl)
             .header("Authorization", "Bearer $token")
@@ -166,8 +191,14 @@ class AndroidAppUpdateController(
             .header("X-GitHub-Api-Version", "2022-11-28")
             .build()
         client.newCall(request).execute().use { resp ->
-            if (!resp.isSuccessful) { tmp.delete(); return null }
-            val body = resp.body ?: run { tmp.delete(); return null }
+            if (!resp.isSuccessful) {
+                tmp.delete()
+                return null
+            }
+            val body = resp.body ?: run {
+                tmp.delete()
+                return null
+            }
             val total = body.contentLength()
             body.byteStream().use { input ->
                 tmp.outputStream().use { out ->
@@ -182,9 +213,15 @@ class AndroidAppUpdateController(
                 }
             }
         }
-        if (tmp.length() <= 0) { tmp.delete(); return null }
+        if (tmp.length() <= 0) {
+            tmp.delete()
+            return null
+        }
         apkFile.delete()
-        if (!tmp.renameTo(apkFile)) { tmp.delete(); return null }
+        if (!tmp.renameTo(apkFile)) {
+            tmp.delete()
+            return null
+        }
         logger.i(TAG, "APK скачан: ${apkFile.length() / 1024 / 1024}MB")
         return apkFile
     }
@@ -194,6 +231,7 @@ class AndroidAppUpdateController(
      * STATUS_PENDING_USER_ACTION в [InstallResultReceiver], который поднимает диалог
      * подтверждения. Работает из foreground и background.
      */
+    @Suppress("NestedBlockDepth")
     private fun installApk(apkFile: File, version: Int) {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(
@@ -215,7 +253,9 @@ class AndroidAppUpdateController(
                     putExtra(InstallResultReceiver.EXTRA_VERSION, version)
                 }
                 val pi = PendingIntent.getBroadcast(
-                    context, sessionId, statusIntent,
+                    context,
+                    sessionId,
+                    statusIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or pendingIntentMutableFlag()
                 )
                 session.commit(pi.intentSender)
@@ -229,8 +269,11 @@ class AndroidAppUpdateController(
     }
 
     private fun pendingIntentMutableFlag(): Int =
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
-            PendingIntent.FLAG_MUTABLE else 0
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            PendingIntent.FLAG_MUTABLE
+        } else {
+            0
+        }
 
     private fun ensureChannel() {
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
@@ -249,10 +292,17 @@ class AndroidAppUpdateController(
             putExtra("open_section", "version")
         }
         val pi = PendingIntent.getActivity(
-            context, 1, open,
+            context,
+            1,
+            open,
             PendingIntent.FLAG_UPDATE_CURRENT or
-                (if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
-                    PendingIntent.FLAG_IMMUTABLE else 0)
+                (
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        PendingIntent.FLAG_IMMUTABLE
+                    } else {
+                        0
+                    }
+                    )
         )
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
@@ -265,8 +315,11 @@ class AndroidAppUpdateController(
             .build()
         nm.notify(NOTIFY_ID, n)
         AndroidNotificationInbox.record(
-            context, "Доступно обновление v$version", "Открой приложение и нажми «Установить»",
-            "update", System.currentTimeMillis()
+            context,
+            "Доступно обновление v$version",
+            "Открой приложение и нажми «Установить»",
+            "update",
+            System.currentTimeMillis()
         )
         logger.i(TAG, "Уведомление о доступном обновлении v$version показано")
     }
@@ -291,6 +344,7 @@ class AndroidAppUpdateController(
         const val NOTIFY_ID = 9001
         const val UPDATE_PREFS = "duq_update"
         const val KEY_AVAILABLE_VERSION = "available_version"
+
         // Точка входа androidApp (тап по пушу обновления → MainActivity, раздел «Версия»).
         const val LAUNCH_ACTIVITY = "com.duq.android.MainActivity"
     }

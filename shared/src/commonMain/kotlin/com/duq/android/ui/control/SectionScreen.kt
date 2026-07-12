@@ -35,7 +35,7 @@ fun SectionScreen(sectionKey: String, onBack: () -> Unit, vm: SectionViewModel =
         "agents" -> AgentsScreen(onBack)
         "skills" -> SkillsScreen(onBack)
         "schedule" -> ScheduleScreen(onBack)
-        else -> VersionScreen(vm, onBack)   // "version" (+ legacy "engine")
+        else -> VersionScreen(vm, onBack) // "version" (+ legacy "engine")
     }
 }
 
@@ -44,7 +44,10 @@ fun SectionScreen(sectionKey: String, onBack: () -> Unit, vm: SectionViewModel =
 private fun VersionScreen(vm: SectionViewModel, onBack: () -> Unit) {
     val core by vm.core.collectAsState()
     val app by vm.app.collectAsState()
-    LaunchedEffect(Unit) { vm.loadCore(); vm.loadApp() }
+    LaunchedEffect(Unit) {
+        vm.loadCore()
+        vm.loadApp()
+    }
     // Пока апдейт ядра идёт — авто-опрос статуса (живой прогресс + детект завершения).
     val running = (core as? SectionViewModel.CoreState.Data)?.status?.running == true
     LaunchedEffect(running) {
@@ -59,16 +62,28 @@ private fun VersionScreen(vm: SectionViewModel, onBack: () -> Unit) {
             TopAppBar(
                 title = { Text("Версия", color = DuqColors.textPrimary) },
                 navigationIcon = {
-                    Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Назад",
+                    Icon(
+                        Icons.Outlined.ArrowBackIosNew,
+                        contentDescription = "Назад",
                         tint = DuqColors.textPrimary,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack)
-                            .padding(horizontal = 16.dp, vertical = 8.dp).size(20.dp))
+                            .padding(horizontal = 16.dp, vertical = 8.dp).size(20.dp)
+                    )
                 },
                 actions = {
-                    Icon(Icons.Outlined.Refresh, contentDescription = "Обновить",
+                    Icon(
+                        Icons.Outlined.Refresh,
+                        contentDescription = "Обновить",
                         tint = DuqColors.primary,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                            .clickable { vm.loadCore(); vm.loadApp() }.padding(horizontal = 14.dp, vertical = 8.dp).size(22.dp))
+                            .clickable {
+                                vm.loadCore()
+                                vm.loadApp()
+                            }.padding(
+                                horizontal = 14.dp,
+                                vertical = 8.dp
+                            ).size(22.dp)
+                    )
                     GlobalTopActions()
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DuqColors.background),
@@ -89,8 +104,12 @@ private fun VersionScreen(vm: SectionViewModel, onBack: () -> Unit) {
                             CircularProgressIndicator(color = DuqColors.primary, modifier = Modifier.size(22.dp))
                         }
                     is SectionViewModel.CoreState.Error ->
-                        Text("⚠️ ядро: ${s.message}", color = DuqColors.textMuted, fontSize = 12.sp,
-                            modifier = Modifier.padding(8.dp))
+                        Text(
+                            "⚠️ ядро: ${s.message}",
+                            color = DuqColors.textMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(8.dp)
+                        )
                     is SectionViewModel.CoreState.Data -> EngineCard(s.status, vm)
                 }
             }
@@ -100,9 +119,20 @@ private fun VersionScreen(vm: SectionViewModel, onBack: () -> Unit) {
 
 @Composable private fun AppCard(st: SectionViewModel.AppState, vm: SectionViewModel) = Card {
     Text("📱 Приложение", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DuqColors.textPrimary)
-    Text("текущая: ${st.currentName}", fontSize = 12.sp, color = DuqColors.textSecondary, modifier = Modifier.padding(top = 4.dp))
-    if (st.updateAvailable)
-        Text("доступна: v${st.remoteCode}", fontSize = 12.sp, color = DuqColors.primary, modifier = Modifier.padding(top = 2.dp))
+    Text(
+        "текущая: ${st.currentName}",
+        fontSize = 12.sp,
+        color = DuqColors.textSecondary,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+    if (st.updateAvailable) {
+        Text(
+            "доступна: v${st.remoteCode}",
+            fontSize = 12.sp,
+            color = DuqColors.primary,
+            modifier = Modifier.padding(top = 2.dp)
+        )
+    }
     Spacer(Modifier.height(10.dp))
     when {
         st.installing -> Row(verticalAlignment = Alignment.CenterVertically) {
@@ -121,19 +151,39 @@ private fun VersionScreen(vm: SectionViewModel, onBack: () -> Unit) {
     Text("⚙️ Ядро DUQ", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DuqColors.textPrimary)
     // Версии (git-ревизии ядра) показываем только в покое; во время апдейта — «идёт».
     if (!st.running) {
-        Text("текущая: ${st.current ?: "?"}", fontSize = 12.sp, color = DuqColors.textSecondary,
-            modifier = Modifier.padding(top = 4.dp))
-        if (!st.latest.isNullOrBlank() && st.latest != st.current)
-            Text("доступна: ${st.latest}", fontSize = 12.sp, color = DuqColors.primary, modifier = Modifier.padding(top = 2.dp))
-        if (st.updateAvailable)
-            Text("⚡ Доступно обновление", fontSize = 12.sp, color = DuqColors.success, modifier = Modifier.padding(top = 2.dp))
+        Text(
+            "текущая: ${st.current ?: "?"}",
+            fontSize = 12.sp,
+            color = DuqColors.textSecondary,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+        if (!st.latest.isNullOrBlank() && st.latest != st.current) {
+            Text(
+                "доступна: ${st.latest}",
+                fontSize = 12.sp,
+                color = DuqColors.primary,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        if (st.updateAvailable) {
+            Text(
+                "⚡ Доступно обновление",
+                fontSize = 12.sp,
+                color = DuqColors.success,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
     }
     Spacer(Modifier.height(10.dp))
     if (st.running) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(color = DuqColors.primary, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Обновляется до ${st.latest ?: "новой версии"}… (~8-10 мин)", fontSize = 13.sp, color = DuqColors.textSecondary)
+            Text(
+                "Обновляется до ${st.latest ?: "новой версии"}… (~8-10 мин)",
+                fontSize = 13.sp,
+                color = DuqColors.textSecondary
+            )
         }
         if (st.log.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
@@ -151,31 +201,45 @@ private fun VersionScreen(vm: SectionViewModel, onBack: () -> Unit) {
     }
     msg?.let { Text(it, fontSize = 12.sp, color = DuqColors.textSecondary, modifier = Modifier.padding(top = 8.dp)) }
 
-    if (showConfirm) AlertDialog(
-        onDismissRequest = { showConfirm = false },
-        title = { Text("Обновить ядро?") },
-        text = { Text("Ядро обновится до новой версии. Бот перезапустится и будет недоступен несколько минут. Продолжить?") },
-        confirmButton = {
-            TextButton(onClick = {
-                showConfirm = false
-                vm.runCore { res -> msg = when (res) {
-                    CoreUpdateClient.RunResult.STARTED -> "Обновление запущено…"
-                    CoreUpdateClient.RunResult.ALREADY_RUNNING -> "Обновление уже идёт"
-                    CoreUpdateClient.RunResult.FAILED -> "Не удалось запустить (бэкенд недоступен?)"
-                } }
-            }) { Text("Обновить", color = DuqColors.primary) }
-        },
-        dismissButton = { TextButton(onClick = { showConfirm = false }) { Text("Отмена") } },
-        containerColor = DuqColors.surfaceVariant
-    )
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            title = { Text("Обновить ядро?") },
+            text = {
+                Text(
+                    "Ядро обновится до новой версии. Бот перезапустится и будет недоступен несколько минут. Продолжить?"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showConfirm = false
+                    vm.runCore { res ->
+                        msg = when (res) {
+                            CoreUpdateClient.RunResult.STARTED -> "Обновление запущено…"
+                            CoreUpdateClient.RunResult.ALREADY_RUNNING -> "Обновление уже идёт"
+                            CoreUpdateClient.RunResult.FAILED -> "Не удалось запустить (бэкенд недоступен?)"
+                        }
+                    }
+                }) { Text("Обновить", color = DuqColors.primary) }
+            },
+            dismissButton = { TextButton(onClick = { showConfirm = false }) { Text("Отмена") } },
+            containerColor = DuqColors.surfaceVariant
+        )
+    }
 }
 
 // ---- shared UI ----
 @Composable private fun Card(content: @Composable ColumnScope.() -> Unit) = Column(
     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(DuqColors.surfaceVariant)
-        .border(1.dp, DuqColors.glassBorder, RoundedCornerShape(12.dp)).padding(14.dp), content = content)
+        .border(1.dp, DuqColors.glassBorder, RoundedCornerShape(12.dp)).padding(14.dp),
+    content = content
+)
 
 @Composable private fun ActionChip(label: String, color: Color, onClick: () -> Unit) = Text(
-    label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = color,
+    label,
+    fontSize = 13.sp,
+    fontWeight = FontWeight.Medium,
+    color = color,
     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(color.copy(alpha = 0.12f))
-        .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp))
+        .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp)
+)

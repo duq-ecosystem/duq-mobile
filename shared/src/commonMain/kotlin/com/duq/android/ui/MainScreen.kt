@@ -20,8 +20,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
-import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.CircularProgressIndicator
@@ -80,6 +80,7 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod", "CyclomaticComplexMethod", "UnusedParameter")
 fun MainScreen(
     onNavigateToSettings: () -> Unit,
     onOpenPalette: () -> Unit = {},
@@ -189,7 +190,12 @@ fun MainScreen(
                             .padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "＋ Новый чат", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DuqColors.primary)
+                        Text(
+                            text = "＋ Новый чат",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DuqColors.primary
+                        )
                     }
                 }
                 // Мульти-агенты: выбор агента. Каждый агент = свой чат/память/тулсет
@@ -212,8 +218,11 @@ fun MainScreen(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(
-                                        if (sel) DuqColors.primary.copy(alpha = 0.15f)
-                                        else DuqColors.surfaceElevated
+                                        if (sel) {
+                                            DuqColors.primary.copy(alpha = 0.15f)
+                                        } else {
+                                            DuqColors.surfaceElevated
+                                        }
                                     )
                                     .clickable {
                                         viewModel.switchAgent(agent.id)
@@ -245,8 +254,11 @@ fun MainScreen(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(
-                                        if (sel) DuqColors.primary.copy(alpha = 0.15f)
-                                        else DuqColors.surfaceElevated
+                                        if (sel) {
+                                            DuqColors.primary.copy(alpha = 0.15f)
+                                        } else {
+                                            DuqColors.surfaceElevated
+                                        }
                                     )
                                     .clickable { viewModel.switchModel(id) }
                                     .padding(horizontal = 14.dp, vertical = 7.dp)
@@ -271,7 +283,9 @@ fun MainScreen(
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(if (selected) DuqColors.primary.copy(alpha = 0.15f) else DuqColors.surfaceElevated)
+                            .background(
+                                if (selected) DuqColors.primary.copy(alpha = 0.15f) else DuqColors.surfaceElevated
+                            )
                             .clickable {
                                 viewModel.selectConversation(conv.id)
                                 showConversationPicker = false
@@ -291,7 +305,14 @@ fun MainScreen(
                             maxLines = 2,
                             modifier = Modifier.weight(1f)
                         )
-                        if (selected) Text(text = "✓", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DuqColors.primary)
+                        if (selected) {
+                            Text(
+                                text = "✓",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DuqColors.primary
+                            )
+                        }
                     }
                 }
             }
@@ -355,8 +376,12 @@ fun MainScreen(
                         .clickable(onClick = onOpenPalette),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Outlined.Search, contentDescription = "Поиск",
-                        tint = DuqColors.textSecondary, modifier = Modifier.size(22.dp))
+                    Icon(
+                        Icons.Outlined.Search,
+                        contentDescription = "Поиск",
+                        tint = DuqColors.textSecondary,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 // 🔔 уведомления + ⚙️ настройки — глобальный блок (на всех экранах).
@@ -406,8 +431,12 @@ fun MainScreen(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Outlined.History, contentDescription = "Сессии",
-                        tint = DuqColors.textSecondary, modifier = Modifier.size(22.dp))
+                    Icon(
+                        Icons.Outlined.History,
+                        contentDescription = "Сессии",
+                        tint = DuqColors.textSecondary,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 OutlinedTextField(
@@ -454,7 +483,8 @@ fun MainScreen(
                 // Живые анимации кнопки: пульс при записи + сама кнопка слегка «дышит».
                 val btnAnim = rememberInfiniteTransition(label = "recBtn")
                 val btnPulse by btnAnim.animateFloat(
-                    initialValue = 0f, targetValue = 1f,
+                    initialValue = 0f,
+                    targetValue = 1f,
                     animationSpec = infiniteRepeatable(
                         tween(if (recording) 650 else 900, easing = FastOutSlowInEasing),
                         RepeatMode.Reverse
@@ -464,26 +494,27 @@ fun MainScreen(
                 val btnScale = if (recording) 1f + 0.10f * btnPulse else 1f
                 val btnColor = when {
                     recording -> DuqColors.error
-                    transcribing -> Color(0xFF7C4DFF)   // фиолетовый — совпадает с halo «распознаю»
+                    transcribing -> Color(0xFF7C4DFF) // фиолетовый — совпадает с halo «распознаю»
                     hasText -> DuqColors.primary
                     else -> DuqColors.surfaceElevated
                 }
 
                 Box(
-                    modifier = Modifier.size(64.dp),   // запас под пульс-кольцо
+                    modifier = Modifier.size(64.dp), // запас под пульс-кольцо
                     contentAlignment = Alignment.Center
                 ) {
                     // Расходящееся пульсирующее кольцо — видно, что идёт запись.
                     if (recording) {
-                        Box(Modifier
-                            .size(48.dp)
-                            .drawBehind {
-                                val rr = size.minDimension / 2f * (1f + 0.55f * btnPulse)
-                                drawCircle(
-                                    color = DuqColors.error.copy(alpha = 0.45f * (1f - btnPulse)),
-                                    radius = rr
-                                )
-                            }
+                        Box(
+                            Modifier
+                                .size(48.dp)
+                                .drawBehind {
+                                    val rr = size.minDimension / 2f * (1f + 0.55f * btnPulse)
+                                    drawCircle(
+                                        color = DuqColors.error.copy(alpha = 0.45f * (1f - btnPulse)),
+                                        radius = rr
+                                    )
+                                }
                         )
                     }
                     Box(
@@ -510,11 +541,12 @@ fun MainScreen(
                                     waitForUpOrCancellation()
                                     holdJob.cancel()
                                     if (recordingStarted) {
-                                        viewModel.stopVoiceInput()  // отпустили → стоп + отправка транскрипта
+                                        viewModel.stopVoiceInput() // отпустили → стоп + отправка транскрипта
                                     } else if (audioPlaybackInfo.state == PlaybackState.PLAYING) {
                                         audioPlaybackManager.stop()
                                     } else if (textInput.isNotBlank()) {
-                                        viewModel.sendTextMessage(textInput); textInput = ""
+                                        viewModel.sendTextMessage(textInput)
+                                        textInput = ""
                                     }
                                 }
                             },

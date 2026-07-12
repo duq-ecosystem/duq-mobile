@@ -28,7 +28,7 @@ import org.koin.compose.koinInject
 @Composable
 fun RegistrationScreen(
     onRegistered: () -> Unit,
-    onBack: (() -> Unit)? = null,   // не-null = «войти под другим» поверх профиля (показать назад)
+    onBack: (() -> Unit)? = null, // не-null = «войти под другим» поверх профиля (показать назад)
     rest: DuqRestClient = koinInject(),
     repo: SettingsRepository = koinInject(),
     nodeClient: DuqNodeClient = koinInject(),
@@ -43,8 +43,10 @@ fun RegistrationScreen(
         TopAppBar(
             title = { Text("Вход в DUQ") },
             navigationIcon = {
-                if (onBack != null) IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                    }
                 }
             },
         )
@@ -83,8 +85,15 @@ fun RegistrationScreen(
                         status = runCatching {
                             rest.login(name.trim())
                         }.fold(
-                            onSuccess = { nodeClient.reconnect(); onRegistered(); "" },
-                            onFailure = { busy = false; "Ошибка: ${it.message}" },
+                            onSuccess = {
+                                nodeClient.reconnect()
+                                onRegistered()
+                                ""
+                            },
+                            onFailure = {
+                                busy = false
+                                "Ошибка: ${it.message}"
+                            },
                         )
                     }
                 },
@@ -93,8 +102,11 @@ fun RegistrationScreen(
             ) { Text(if (busy) "Вхожу…" else "Войти") }
 
             if (status.isNotBlank()) {
-                Text(status, color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall)
+                Text(
+                    status,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }

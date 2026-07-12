@@ -63,7 +63,9 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 )
                 .build()
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request
+                WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                request
             )
         }
     }

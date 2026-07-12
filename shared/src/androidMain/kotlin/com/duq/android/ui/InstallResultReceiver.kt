@@ -74,8 +74,13 @@ class InstallResultReceiver : BroadcastReceiver() {
             )
         }
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-            (if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
-                PendingIntent.FLAG_MUTABLE else 0)
+            (
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    PendingIntent.FLAG_MUTABLE
+                } else {
+                    0
+                }
+                )
         val pi = PendingIntent.getActivity(context, version, confirm, flags)
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
@@ -99,6 +104,7 @@ class InstallResultReceiver : BroadcastReceiver() {
         const val EXTRA_VERSION = "version"
         private const val CHANNEL_ID = "duq_update_channel"
         private const val NOTIFY_ID = 9002
+
         // Должны совпадать с константами AndroidAppUpdateController (общий prefs-store).
         private const val UPDATE_PREFS = "duq_update"
         private const val KEY_AVAILABLE_VERSION = "available_version"

@@ -30,10 +30,10 @@ import com.duq.android.ui.DeepLinkState
 import com.duq.android.ui.NotificationInbox
 import com.duq.android.ui.theme.DuqColors
 import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /** Глобальный chrome: шторка уведомлений (на всех экранах) + вход в Настройки. */
@@ -41,9 +41,12 @@ object AppChrome {
     var showNotifications by mutableStateOf(false)
     var notificationsTab by mutableStateOf(0) // 0 = Уведомления, 1 = Дайджесты
     var openSettings: () -> Unit = {}
-    var openProfile: () -> Unit = {}   // профиль — с любого экрана через аватар в топбаре
+    var openProfile: () -> Unit = {} // профиль — с любого экрана через аватар в топбаре
 
-    fun openShade(tab: Int = 0) { notificationsTab = tab; showNotifications = true }
+    fun openShade(tab: Int = 0) {
+        notificationsTab = tab
+        showNotifications = true
+    }
 }
 
 /**
@@ -98,19 +101,30 @@ fun GlobalTopActions(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier.size(44.dp).clip(CircleShape)
-                .clickable { vm.refresh(); AppChrome.openShade(0) },
+                .clickable {
+                    vm.refresh()
+                    AppChrome.openShade(0)
+                },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Outlined.NotificationsNone, "Уведомления",
-                tint = DuqColors.textSecondary, modifier = Modifier.size(23.dp))
+            Icon(
+                Icons.Outlined.NotificationsNone,
+                "Уведомления",
+                tint = DuqColors.textSecondary,
+                modifier = Modifier.size(23.dp)
+            )
             if (unread > 0) {
                 Box(
                     modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(16.dp)
                         .clip(CircleShape).background(DuqColors.primary),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(if (unread > 9) "9+" else unread.toString(),
-                        fontSize = 9.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (unread > 9) "9+" else unread.toString(),
+                        fontSize = 9.sp,
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
@@ -119,8 +133,12 @@ fun GlobalTopActions(
                 .clickable { AppChrome.openSettings() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Outlined.Settings, "Настройки",
-                tint = DuqColors.textSecondary, modifier = Modifier.size(22.dp))
+            Icon(
+                Icons.Outlined.Settings,
+                "Настройки",
+                tint = DuqColors.textSecondary,
+                modifier = Modifier.size(22.dp)
+            )
         }
     }
 }
@@ -142,7 +160,10 @@ fun NotificationsShade(vm: NotificationsViewModel = koinViewModel()) {
     val scope = rememberCoroutineScope()
     val tabs = listOf("Уведомления", "Дайджесты")
 
-    LaunchedEffect(Unit) { vm.refresh(); vm.markOpened() }
+    LaunchedEffect(Unit) {
+        vm.refresh()
+        vm.markOpened()
+    }
     // Открыли по пушу дайджеста (или сменили запрошенный таб) → форсим нужный таб.
     // rememberPagerState(initialPage) не реагирует на смену значения после создания,
     // поэтому двигаем пейджер явно — и при первом открытии, и если шторка уже открыта.
@@ -163,9 +184,12 @@ fun NotificationsShade(vm: NotificationsViewModel = koinViewModel()) {
                         selected = pager.currentPage == i,
                         onClick = { scope.launch { pager.animateScrollToPage(i) } },
                         text = {
-                            Text(title, fontSize = 14.sp,
+                            Text(
+                                title,
+                                fontSize = 14.sp,
                                 fontWeight = if (pager.currentPage == i) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (pager.currentPage == i) DuqColors.textPrimary else DuqColors.textSecondary)
+                                color = if (pager.currentPage == i) DuqColors.textPrimary else DuqColors.textSecondary
+                            )
                         }
                     )
                 }
@@ -188,12 +212,17 @@ private fun ClearRow(onClear: () -> Unit) {
 
 @Composable
 private fun NotifList(items: List<NotificationInbox.Item>, vm: NotificationsViewModel) {
-    if (items.isEmpty()) { EmptyShade("Пока нет уведомлений"); return }
+    if (items.isEmpty()) {
+        EmptyShade("Пока нет уведомлений")
+        return
+    }
     var expandedId by remember { mutableStateOf<Long?>(null) }
     LazyColumn(Modifier.fillMaxWidth().heightIn(max = 440.dp).padding(horizontal = 16.dp)) {
         item { ClearRow { vm.clearNotifs() } }
         items(items, key = { it.id }) { item ->
-            val icon = when (item.type) { "update" -> "⬆"; "message" -> "💬"; else -> "🔔" }
+            val icon = when (item.type) { "update" -> "⬆"
+                "message" -> "💬"
+                else -> "🔔" }
             val expanded = expandedId == item.id
             Column(
                 Modifier.fillMaxWidth().padding(vertical = 6.dp).clip(RoundedCornerShape(10.dp))
@@ -209,12 +238,27 @@ private fun NotifList(items: List<NotificationInbox.Item>, vm: NotificationsView
                         }
                     }.padding(8.dp)
             ) {
-                Text("$icon  ${item.title}", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = DuqColors.textPrimary)
+                Text(
+                    "$icon  ${item.title}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = DuqColors.textPrimary
+                )
                 if (item.text.isNotBlank()) {
-                    Text(item.text, fontSize = 13.sp, color = DuqColors.textSecondary,
-                        maxLines = if (expanded) Int.MAX_VALUE else 3, modifier = Modifier.padding(top = 2.dp))
+                    Text(
+                        item.text,
+                        fontSize = 13.sp,
+                        color = DuqColors.textSecondary,
+                        maxLines = if (expanded) Int.MAX_VALUE else 3,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
                 }
-                Text(fmtNotifTime(item.timestampMs), fontSize = 11.sp, color = DuqColors.textDim, modifier = Modifier.padding(top = 2.dp))
+                Text(
+                    fmtNotifTime(item.timestampMs),
+                    fontSize = 11.sp,
+                    color = DuqColors.textDim,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
         }
     }
@@ -222,7 +266,10 @@ private fun NotifList(items: List<NotificationInbox.Item>, vm: NotificationsView
 
 @Composable
 private fun DigestList(items: List<NotificationInbox.Item>, vm: NotificationsViewModel) {
-    if (items.isEmpty()) { EmptyShade("Пока нет выпусков"); return }
+    if (items.isEmpty()) {
+        EmptyShade("Пока нет выпусков")
+        return
+    }
     var expandedId by remember { mutableStateOf<Long?>(null) }
     LazyColumn(Modifier.fillMaxWidth().heightIn(max = 440.dp).padding(horizontal = 16.dp)) {
         item { ClearRow { vm.clearDigests() } }
@@ -236,16 +283,31 @@ private fun DigestList(items: List<NotificationInbox.Item>, vm: NotificationsVie
                 // Не дублируем 📰: скилл уже кладёт её в title. Префиксим только если нет.
                 val digestTitle = if (item.title.trimStart().startsWith("📰")) item.title else "📰  ${item.title}"
                 Text(digestTitle, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DuqColors.textPrimary)
-                Text(fmtNotifTime(item.timestampMs), fontSize = 11.sp, color = DuqColors.textDim,
-                    modifier = Modifier.padding(top = 2.dp, bottom = 6.dp))
+                Text(
+                    fmtNotifTime(item.timestampMs),
+                    fontSize = 11.sp,
+                    color = DuqColors.textDim,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 6.dp)
+                )
                 if (item.text.isNotBlank()) {
                     if (expanded) {
                         SelectionContainer {
                             Text(item.text, fontSize = 14.sp, color = DuqColors.textSecondary, lineHeight = 21.sp)
                         }
                     } else {
-                        Text(item.text, fontSize = 14.sp, color = DuqColors.textSecondary, lineHeight = 21.sp, maxLines = 4)
-                        Text("Читать полностью ▾", fontSize = 12.sp, color = DuqColors.primary, modifier = Modifier.padding(top = 6.dp))
+                        Text(
+                            item.text,
+                            fontSize = 14.sp,
+                            color = DuqColors.textSecondary,
+                            lineHeight = 21.sp,
+                            maxLines = 4
+                        )
+                        Text(
+                            "Читать полностью ▾",
+                            fontSize = 12.sp,
+                            color = DuqColors.primary,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
                     }
                 }
             }

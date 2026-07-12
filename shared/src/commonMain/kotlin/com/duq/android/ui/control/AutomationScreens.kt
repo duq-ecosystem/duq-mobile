@@ -40,19 +40,28 @@ fun SkillsScreen(onBack: () -> Unit, vm: AutomationViewModel = koinViewModel()) 
         topBar = { AutoTopBar("Скиллы", onBack) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { editing = null; creating = true },
-                containerColor = DuqColors.primary, contentColor = DuqColors.background,
-                icon = { Icon(Icons.Outlined.Add, null) }, text = { Text("Скилл") }
+                onClick = {
+                    editing = null
+                    creating = true
+                },
+                containerColor = DuqColors.primary,
+                contentColor = DuqColors.background,
+                icon = { Icon(Icons.Outlined.Add, null) },
+                text = { Text("Скилл") }
             )
         }
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             when {
                 st.loading && st.skills.isEmpty() -> Loading()
-                st.skills.isEmpty() -> EmptyState(Icons.Outlined.AutoAwesome,
-                    "Скиллов нет", "Скилл — это md-промпт, который агент выполняет своими тулами.")
+                st.skills.isEmpty() -> EmptyState(
+                    Icons.Outlined.AutoAwesome,
+                    "Скиллов нет",
+                    "Скилл — это md-промпт, который агент выполняет своими тулами."
+                )
                 else -> LazyColumn(
-                    Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp),
+                    Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     st.error?.let { item { ErrorRow(it) } }
@@ -63,15 +72,24 @@ fun SkillsScreen(onBack: () -> Unit, vm: AutomationViewModel = koinViewModel()) 
             }
         }
     }
-    if (creating || editing != null) SkillSheet(
-        initial = editing,
-        onDismiss = { creating = false; editing = null },
-        onSave = { name, desc, content ->
-            if (editing == null) vm.createSkill(name, content, desc)
-            else vm.editSkill(editing!!.name, content, desc)
-            creating = false; editing = null
-        }
-    )
+    if (creating || editing != null) {
+        SkillSheet(
+            initial = editing,
+            onDismiss = {
+                creating = false
+                editing = null
+            },
+            onSave = { name, desc, content ->
+                if (editing == null) {
+                    vm.createSkill(name, content, desc)
+                } else {
+                    vm.editSkill(editing!!.name, content, desc)
+                }
+                creating = false
+                editing = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -83,8 +101,12 @@ private fun SkillItem(s: SkillDto, onTap: () -> Unit, onDelete: () -> Unit) {
         ListItem(
             headlineContent = { Text(s.name, color = DuqColors.textPrimary, fontWeight = FontWeight.Medium) },
             supportingContent = {
-                Text(s.description?.takeIf { it.isNotBlank() } ?: s.content.take(80),
-                    color = DuqColors.textSecondary, fontSize = 13.sp, maxLines = 2)
+                Text(
+                    s.description?.takeIf { it.isNotBlank() } ?: s.content.take(80),
+                    color = DuqColors.textSecondary,
+                    fontSize = 13.sp,
+                    maxLines = 2
+                )
             },
             trailingContent = {
                 IconButton(onClick = onDelete) {
@@ -110,15 +132,22 @@ private fun SkillSheet(initial: SkillDto?, onDismiss: () -> Unit, onSave: (Strin
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(if (editMode) "Скилл: ${initial!!.name}" else "Новый скилл",
-                color = DuqColors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                if (editMode) "Скилл: ${initial!!.name}" else "Новый скилл",
+                color = DuqColors.textPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
             if (!editMode) AutoField(name, { name = it }, "Имя (kebab-case)")
             AutoField(desc, { desc = it }, "Описание (одна строка)")
             AutoField(content, { content = it }, "md-промпт: что сделать", minLines = 5)
             Button(
                 onClick = { if (name.isNotBlank() && content.isNotBlank()) onSave(name, desc, content) },
                 enabled = name.isNotBlank() && content.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = DuqColors.primary, contentColor = DuqColors.background),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DuqColors.primary,
+                    contentColor = DuqColors.background
+                ),
                 modifier = Modifier.fillMaxWidth()
             ) { Text(if (editMode) "Сохранить" else "Создать скилл") }
         }
@@ -140,41 +169,63 @@ fun ScheduleScreen(onBack: () -> Unit, vm: AutomationViewModel = koinViewModel()
         topBar = { AutoTopBar("Задачи", onBack) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { editing = null; creating = true },
-                containerColor = DuqColors.primary, contentColor = DuqColors.background,
-                icon = { Icon(Icons.Outlined.Add, null) }, text = { Text("Задача") }
+                onClick = {
+                    editing = null
+                    creating = true
+                },
+                containerColor = DuqColors.primary,
+                contentColor = DuqColors.background,
+                icon = { Icon(Icons.Outlined.Add, null) },
+                text = { Text("Задача") }
             )
         }
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             when {
                 st.loading && st.tasks.isEmpty() -> Loading()
-                st.tasks.isEmpty() -> EmptyState(Icons.Outlined.Schedule,
-                    "Задач нет", "Задача запускает скилл по расписанию (cron).")
+                st.tasks.isEmpty() -> EmptyState(
+                    Icons.Outlined.Schedule,
+                    "Задач нет",
+                    "Задача запускает скилл по расписанию (cron)."
+                )
                 else -> LazyColumn(
-                    Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp),
+                    Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     st.error?.let { item { ErrorRow(it) } }
                     items(st.tasks, key = { it.taskId }) { t ->
-                        CronItem(t, onTap = { editing = t },
-                            onToggle = { vm.toggleTask(t) }, onDelete = { vm.deleteTask(t.taskId) })
+                        CronItem(
+                            t,
+                            onTap = { editing = t },
+                            onToggle = { vm.toggleTask(t) },
+                            onDelete = { vm.deleteTask(t.taskId) }
+                        )
                     }
                 }
             }
         }
     }
-    if (creating || editing != null) CronSheet(
-        initial = editing,
-        skills = st.skills.map { it.name },
-        agents = st.agents,
-        onDismiss = { creating = false; editing = null },
-        onSave = { n, cron, skill, agentId ->
-            if (editing == null) vm.createTask(n, cron, skill, agentId)
-            else vm.editTask(editing!!.taskId, n, cron, skill, agentId)
-            creating = false; editing = null
-        }
-    )
+    if (creating || editing != null) {
+        CronSheet(
+            initial = editing,
+            skills = st.skills.map { it.name },
+            agents = st.agents,
+            onDismiss = {
+                creating = false
+                editing = null
+            },
+            onSave = { n, cron, skill, agentId ->
+                if (editing == null) {
+                    vm.createTask(n, cron, skill, agentId)
+                } else {
+                    vm.editTask(editing!!.taskId, n, cron, skill, agentId)
+                }
+                creating = false
+                editing = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -189,7 +240,11 @@ private fun CronItem(t: CronTaskDto, onTap: () -> Unit, onToggle: () -> Unit, on
             },
             supportingContent = {
                 Column {
-                    Text("${cronHuman(t.cron)}  ·  ${t.skill ?: "—"}", color = DuqColors.textSecondary, fontSize = 13.sp)
+                    Text(
+                        "${cronHuman(t.cron)}  ·  ${t.skill ?: "—"}",
+                        color = DuqColors.textSecondary,
+                        fontSize = 13.sp
+                    )
                     t.nextRun?.let { Text("след.: ${prettyNext(it)}", color = DuqColors.textDim, fontSize = 11.sp) }
                 }
             },
@@ -210,14 +265,17 @@ private val WEEKDAYS = listOf("Пн" to 1, "Вт" to 2, "Ср" to 3, "Чт" to 4
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod")
 private fun CronSheet(
-    initial: CronTaskDto?, skills: List<String>,
+    initial: CronTaskDto?,
+    skills: List<String>,
     agents: List<AgentInfo>,
-    onDismiss: () -> Unit, onSave: (String, String, String, String) -> Unit
+    onDismiss: () -> Unit,
+    onSave: (String, String, String, String) -> Unit
 ) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val editMode = initial != null
-    val parsed = remember(initial?.cron) { parseCron(initial?.cron) }  // (hour, minute, daysSet)
+    val parsed = remember(initial?.cron) { parseCron(initial?.cron) } // (hour, minute, daysSet)
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var skill by remember { mutableStateOf(initial?.skill ?: skills.firstOrNull() ?: "") }
     var menu by remember { mutableStateOf(false) }
@@ -236,22 +294,37 @@ private fun CronSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(if (editMode) "Редактировать задачу" else "Новая задача",
-                color = DuqColors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.align(Alignment.Start))
+            Text(
+                if (editMode) "Редактировать задачу" else "Новая задача",
+                color = DuqColors.textPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.align(Alignment.Start)
+            )
             AutoField(name, { name = it }, "Название задачи")
 
-            Text("Во сколько запускать", color = DuqColors.textSecondary, fontSize = 13.sp,
-                modifier = Modifier.align(Alignment.Start))
-            TimeInput(state = time, colors = TimePickerDefaults.colors(
-                timeSelectorSelectedContainerColor = DuqColors.primary,
-                timeSelectorSelectedContentColor = DuqColors.background,
-                timeSelectorUnselectedContainerColor = DuqColors.surfaceVariant,
-                timeSelectorUnselectedContentColor = DuqColors.textPrimary
-            ))
+            Text(
+                "Во сколько запускать",
+                color = DuqColors.textSecondary,
+                fontSize = 13.sp,
+                modifier = Modifier.align(Alignment.Start)
+            )
+            TimeInput(
+                state = time,
+                colors = TimePickerDefaults.colors(
+                    timeSelectorSelectedContainerColor = DuqColors.primary,
+                    timeSelectorSelectedContentColor = DuqColors.background,
+                    timeSelectorUnselectedContainerColor = DuqColors.surfaceVariant,
+                    timeSelectorUnselectedContentColor = DuqColors.textPrimary
+                )
+            )
 
-            Text("В какие дни (ничего = каждый день)", color = DuqColors.textSecondary, fontSize = 13.sp,
-                modifier = Modifier.align(Alignment.Start))
+            Text(
+                "В какие дни (ничего = каждый день)",
+                color = DuqColors.textSecondary,
+                fontSize = 13.sp,
+                modifier = Modifier.align(Alignment.Start)
+            )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 WEEKDAYS.forEach { (label, num) ->
                     val on = num in days
@@ -267,22 +340,32 @@ private fun CronSheet(
                     )
                 }
             }
-            Text("🕒 " + cronHuman(cron), color = DuqColors.textDim, fontSize = 12.sp,
-                modifier = Modifier.align(Alignment.Start))
+            Text(
+                "🕒 " + cronHuman(cron),
+                color = DuqColors.textDim,
+                fontSize = 12.sp,
+                modifier = Modifier.align(Alignment.Start)
+            )
 
             ExposedDropdownMenuBox(expanded = menu, onExpandedChange = { menu = it }) {
                 OutlinedTextField(
-                    value = skill, onValueChange = {}, readOnly = true,
+                    value = skill,
+                    onValueChange = {},
+                    readOnly = true,
                     label = { Text("Скилл") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menu) },
                     modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                     colors = autoFieldColors()
                 )
                 ExposedDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    if (skills.isEmpty())
+                    if (skills.isEmpty()) {
                         DropdownMenuItem(text = { Text("сначала создай скилл") }, onClick = { menu = false })
+                    }
                     skills.forEach { s ->
-                        DropdownMenuItem(text = { Text(s) }, onClick = { skill = s; menu = false })
+                        DropdownMenuItem(text = { Text(s) }, onClick = {
+                            skill = s
+                            menu = false
+                        })
                     }
                 }
             }
@@ -292,7 +375,9 @@ private fun CronSheet(
                 val agentLabel = agents.firstOrNull { it.id == agentId }?.displayName ?: agentId
                 ExposedDropdownMenuBox(expanded = agentMenu, onExpandedChange = { agentMenu = it }) {
                     OutlinedTextField(
-                        value = agentLabel, onValueChange = {}, readOnly = true,
+                        value = agentLabel,
+                        onValueChange = {},
+                        readOnly = true,
                         label = { Text("Агент-исполнитель") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = agentMenu) },
                         modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
@@ -302,7 +387,10 @@ private fun CronSheet(
                         agents.forEach { a ->
                             DropdownMenuItem(
                                 text = { Text(a.displayName) },
-                                onClick = { agentId = a.id; agentMenu = false }
+                                onClick = {
+                                    agentId = a.id
+                                    agentMenu = false
+                                }
                             )
                         }
                     }
@@ -311,7 +399,10 @@ private fun CronSheet(
             Button(
                 onClick = { if (name.isNotBlank() && skill.isNotBlank()) onSave(name, cron, skill, agentId) },
                 enabled = name.isNotBlank() && skill.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = DuqColors.primary, contentColor = DuqColors.background),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DuqColors.primary,
+                    contentColor = DuqColors.background
+                ),
                 modifier = Modifier.fillMaxWidth()
             ) { Text(if (editMode) "Сохранить" else "Создать задачу") }
         }
@@ -322,10 +413,14 @@ private fun CronSheet(
 private fun parseCron(cron: String?): Triple<Int, Int, Set<Int>> {
     val p = cron?.trim()?.split(Regex("\\s+")) ?: emptyList()
     if (p.size == 5) {
-        val mi = p[0].toIntOrNull(); val hh = p[1].toIntOrNull()
+        val mi = p[0].toIntOrNull()
+        val hh = p[1].toIntOrNull()
         if (mi != null && hh != null) {
-            val days = if (p[4] == "*") emptySet()
-            else p[4].split(",").mapNotNull { it.toIntOrNull() }.toSet()
+            val days = if (p[4] == "*") {
+                emptySet()
+            } else {
+                p[4].split(",").mapNotNull { it.toIntOrNull() }.toSet()
+            }
             return Triple(hh, mi, days)
         }
     }
@@ -347,7 +442,12 @@ private fun AutoTopBar(title: String, onBack: () -> Unit) {
         title = { Text(title, color = DuqColors.textPrimary) },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.Outlined.ArrowBackIosNew, "Назад", tint = DuqColors.textPrimary, modifier = Modifier.size(20.dp))
+                Icon(
+                    Icons.Outlined.ArrowBackIosNew,
+                    "Назад",
+                    tint = DuqColors.textPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         },
         actions = { GlobalTopActions() },
@@ -363,15 +463,21 @@ private fun Loading() = Box(Modifier.fillMaxSize(), contentAlignment = Alignment
 @Composable
 private fun EmptyState(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, hint: String) =
     Column(
-        Modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally,
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Icon(icon, null, tint = DuqColors.textDim, modifier = Modifier.size(48.dp))
         Spacer(Modifier.height(12.dp))
         Text(title, color = DuqColors.textSecondary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(6.dp))
-        Text(hint, color = DuqColors.textDim, fontSize = 13.sp,
-            modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Text(
+            hint,
+            color = DuqColors.textDim,
+            fontSize = 13.sp,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
     }
 
 @Composable
@@ -381,9 +487,12 @@ private fun ErrorRow(msg: String) =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun autoFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = DuqColors.textPrimary, unfocusedTextColor = DuqColors.textPrimary,
-    focusedBorderColor = DuqColors.primary, unfocusedBorderColor = DuqColors.textDim,
-    focusedLabelColor = DuqColors.primary, unfocusedLabelColor = DuqColors.textDim,
+    focusedTextColor = DuqColors.textPrimary,
+    unfocusedTextColor = DuqColors.textPrimary,
+    focusedBorderColor = DuqColors.primary,
+    unfocusedBorderColor = DuqColors.textDim,
+    focusedLabelColor = DuqColors.primary,
+    unfocusedLabelColor = DuqColors.textDim,
     cursorColor = DuqColors.primary
 )
 
@@ -391,9 +500,12 @@ private fun autoFieldColors() = OutlinedTextFieldDefaults.colors(
 @Composable
 internal fun AutoField(value: String, onChange: (String) -> Unit, label: String, minLines: Int = 1) {
     OutlinedTextField(
-        value = value, onValueChange = onChange,
-        label = { Text(label) }, minLines = minLines,
-        modifier = Modifier.fillMaxWidth(), colors = autoFieldColors()
+        value = value,
+        onValueChange = onChange,
+        label = { Text(label) },
+        minLines = minLines,
+        modifier = Modifier.fillMaxWidth(),
+        colors = autoFieldColors()
     )
 }
 
@@ -402,12 +514,18 @@ private val DOW_RU = mapOf(0 to "Вс", 1 to "Пн", 2 to "Вт", 3 to "Ср", 4
 
 private fun pad2(n: Int): String = n.toString().padStart(2, '0')
 
+@Suppress("ComplexCondition")
 private fun cronHuman(cron: String?): String {
     if (cron.isNullOrBlank()) return "—"
     val p = cron.trim().split(Regex("\\s+"))
     if (p.size == 5) {
-        val (m, h, dom, mon, dow) = p
-        val mi = m.toIntOrNull(); val hh = h.toIntOrNull()
+        val m = p[0]
+        val h = p[1]
+        val dom = p[2]
+        val mon = p[3]
+        val dow = p[4]
+        val mi = m.toIntOrNull()
+        val hh = h.toIntOrNull()
         if (mi != null && hh != null && dom == "*" && mon == "*") {
             val time = "${pad2(hh)}:${pad2(mi)}"
             if (dow == "*") return "каждый день в $time"
@@ -420,7 +538,8 @@ private fun cronHuman(cron: String?): String {
 
 /** "2026-06-23T01:00:00" → "23.06 01:00". */
 private fun prettyNext(iso: String): String = runCatching {
-    val d = iso.substringBefore("T"); val t = iso.substringAfter("T").take(5)
+    val d = iso.substringBefore("T")
+    val t = iso.substringAfter("T").take(5)
     val (y, mo, da) = d.split("-")
     "$da.$mo $t"
 }.getOrDefault(iso)

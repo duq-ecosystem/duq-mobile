@@ -26,12 +26,15 @@ class IosCoreUpdateNotifier(
     override fun notifyResult(status: CoreUpdateClient.Status) {
         val res = status.result ?: return
         if (status.running || res.ts.isBlank()) return
-        if (defaults.stringForKey(KEY_RESULT_TS) == res.ts) return  // уже уведомляли
+        if (defaults.stringForKey(KEY_RESULT_TS) == res.ts) return // уже уведомляли
 
         val title = if (res.ok) "✅ Ядро обновлено" else "⚠️ Ядро: проблема после обновления"
         val text = res.summary.ifBlank {
-            if (res.ok) "Ядро обновлено до ${res.version ?: "?"} — всё работает ✅"
-            else "Ядро обновлено до ${res.version ?: "?"}, но есть проблема — проверь Движок"
+            if (res.ok) {
+                "Ядро обновлено до ${res.version ?: "?"} — всё работает ✅"
+            } else {
+                "Ядро обновлено до ${res.version ?: "?"}, но есть проблема — проверь Движок"
+            }
         }
         showNotification(title, text)
         val nowMs = (NSDate().timeIntervalSince1970 * 1000.0).toLong()

@@ -82,10 +82,16 @@ class DuqChatClient(
     val incomingMessages: SharedFlow<DuqIncomingMessage> = _incomingMessages.asSharedFlow()
 
     /** Вызывается WS-клиентом ([DuqNodeClient]) на каждый live-фрейм chat.message. */
+    @Suppress("LongParameterList")
     fun onIncomingMessage(
-        messageId: String, role: String, content: String,
-        conversationId: String?, voice: Boolean = false,
-        model: String = "", provider: String = "", isFallback: Boolean = false,
+        messageId: String,
+        role: String,
+        content: String,
+        conversationId: String?,
+        voice: Boolean = false,
+        model: String = "",
+        provider: String = "",
+        isFallback: Boolean = false,
     ) {
         scope.launch {
             _incomingMessages.emit(
@@ -192,7 +198,8 @@ class DuqChatClient(
      */
     suspend fun listConversations(agentId: String? = null): List<DuqConversation> {
         val convs = runCatching { rest.conversations(agentId) }.getOrElse {
-            logger.w(TAG, "conversations failed: ${it.message}"); return emptyList()
+            logger.w(TAG, "conversations failed: ${it.message}")
+            return emptyList()
         }
         return convs.map {
             DuqConversation(
@@ -242,11 +249,23 @@ class DuqChatClient(
      */
     suspend fun loadMessages(conversationId: String, limit: Int = 100): List<OcHistoryMsg> {
         val msgs = runCatching { rest.messages(conversationId) }.getOrElse {
-            logger.w(TAG, "messages($conversationId) failed: ${it.message}"); return emptyList()
+            logger.w(TAG, "messages($conversationId) failed: ${it.message}")
+            return emptyList()
         }
         return msgs
             .filter { it.role == "user" || it.role == "assistant" }
-            .map { OcHistoryMsg(it.role, it.content, it.id, it.hasAudio, it.createdAt, it.model, it.provider, it.isFallback) }
+            .map {
+                OcHistoryMsg(
+                    it.role,
+                    it.content,
+                    it.id,
+                    it.hasAudio,
+                    it.createdAt,
+                    it.model,
+                    it.provider,
+                    it.isFallback
+                )
+            }
             .takeLast(limit)
     }
 
@@ -256,6 +275,7 @@ class DuqChatClient(
         stt.tryTranscribe(wavPath) ?: transcribeAudioOnServer(wavPath)
 
     // ── серверный STT-fallback (faster-whisper за nginx, edge-токен через DefaultRequest) ──
+    @Suppress("ThrowsCount")
     private suspend fun transcribeAudioOnServer(wavPath: String): String {
         val bytes = readFileBytes(wavPath)
         if (bytes.isEmpty()) throw DuqApiException("STT: empty audio file")

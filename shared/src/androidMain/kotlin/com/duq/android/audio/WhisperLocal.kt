@@ -57,6 +57,8 @@ class WhisperLocal(
                 if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE) release()
             }
             override fun onLowMemory() = release()
+
+            @Suppress("EmptyFunctionBlock")
             override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {}
         })
     }
@@ -85,25 +87,35 @@ class WhisperLocal(
         try {
             val req = Request.Builder().url(AppConfig.WHISPER_MODEL_URL).build()
             httpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) { Log.e(TAG, "model download HTTP ${resp.code}"); return@withContext false }
+                if (!resp.isSuccessful) {
+                    Log.e(TAG, "model download HTTP ${resp.code}")
+                    return@withContext false
+                }
                 val body = resp.body ?: return@withContext false
                 val total = body.contentLength().coerceAtLeast(1L)
                 body.byteStream().use { input ->
                     tmp.outputStream().use { output ->
-                        val buf = ByteArray(64 * 1024); var read: Int; var done = 0L
+                        val buf = ByteArray(64 * 1024)
+                        var read: Int
+                        var done = 0L
                         while (input.read(buf).also { read = it } >= 0) {
-                            output.write(buf, 0, read); done += read
+                            output.write(buf, 0, read)
+                            done += read
                             onProgress(done.toFloat() / total)
                         }
                     }
                 }
             }
-            if (!tmp.renameTo(f)) { Log.e(TAG, "rename model failed"); return@withContext false }
+            if (!tmp.renameTo(f)) {
+                Log.e(TAG, "rename model failed")
+                return@withContext false
+            }
             Log.i(TAG, "whisper model downloaded: ${f.length()} bytes")
             true
         } catch (e: Exception) {
             Log.e(TAG, "model download failed: ${e.message}")
-            tmp.delete(); false
+            tmp.delete()
+            false
         }
     }
 
@@ -140,7 +152,7 @@ class WhisperLocal(
     /** Транскрибирует 16 kHz mono PCM16 WAV-файл в текст. Бросает при пустом результате. */
     private suspend fun transcribeWav(file: File): String = withContext(Dispatchers.Default) {
         val pcm = WavDecoder.decodePcm16Mono(file.readBytes())
-        if (pcm.isEmpty()) throw IllegalStateException("empty audio")
+        if (pcm.isEmpty()) error("empty audio")
         val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
         val text = synchronized(lock) { nativeTranscribe(ensureCtx(), pcm, AppConfig.STT_LANGUAGE, threads) }
         text.trim()
@@ -149,6 +161,11 @@ class WhisperLocal(
     /** Выгружает модель из нативной памяти (~0.5 ГБ). Зовётся системой при нехватке RAM. */
     override fun release() {
         if (!nativeAvailable) return
-        synchronized(lock) { if (ctxPtr != 0L) { nativeFree(ctxPtr); ctxPtr = 0L } }
+        synchronized(lock) {
+            if (ctxPtr != 0L) {
+                nativeFree(ctxPtr)
+                ctxPtr = 0L
+            }
+        }
     }
 }

@@ -45,7 +45,10 @@ class VoiceCommandProcessor(
     private var isPlayerInitialized = false
 
     fun initializePlayer() {
-        if (!isPlayerInitialized) { chatAudioPlaybackManager.initialize(); isPlayerInitialized = true }
+        if (!isPlayerInitialized) {
+            chatAudioPlaybackManager.initialize()
+            isPlayerInitialized = true
+        }
     }
 
     fun releasePlayer() {
@@ -53,7 +56,10 @@ class VoiceCommandProcessor(
         // release() ставил isReleased=true НАВСЕГДА + отменял scope → ВСЁ воспроизведение
         // (в т.ч. кнопка чата) умирало до перезапуска app. Голосовому сервису достаточно
         // остановить текущее проигрывание; жизнь синглтона = жизнь приложения.
-        if (isPlayerInitialized) { chatAudioPlaybackManager.stop(); isPlayerInitialized = false }
+        if (isPlayerInitialized) {
+            chatAudioPlaybackManager.stop()
+            isPlayerInitialized = false
+        }
     }
 
     fun stopRecording() = audioRecorder.stopRecording()
@@ -92,7 +98,6 @@ class VoiceCommandProcessor(
             gatewayClient.sendMessage(transcript)
             callback.onStateChanged(DuqState.IDLE)
             ProcessingResult.Success
-
         } catch (e: Exception) {
             Log.e(TAG, "Voice processing failed: ${e.message}")
             val err = errorMapper.mapException(e)

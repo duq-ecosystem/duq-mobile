@@ -55,13 +55,34 @@ class FileLogger(context: Context) : Logger {
         }
     }
 
-    override fun v(tag: String, message: String) { Log.v(tag, message); write('V', tag, message, null) }
-    override fun d(tag: String, message: String) { Log.d(tag, message); write('D', tag, message, null) }
-    override fun i(tag: String, message: String) { Log.i(tag, message); write('I', tag, message, null) }
-    override fun w(tag: String, message: String) { Log.w(tag, message); write('W', tag, message, null) }
-    override fun w(tag: String, message: String, throwable: Throwable) { Log.w(tag, message, throwable); write('W', tag, message, throwable) }
-    override fun e(tag: String, message: String) { Log.e(tag, message); write('E', tag, message, null) }
-    override fun e(tag: String, message: String, throwable: Throwable) { Log.e(tag, message, throwable); write('E', tag, message, throwable) }
+    override fun v(tag: String, message: String) {
+        Log.v(tag, message)
+        write('V', tag, message, null)
+    }
+    override fun d(tag: String, message: String) {
+        Log.d(tag, message)
+        write('D', tag, message, null)
+    }
+    override fun i(tag: String, message: String) {
+        Log.i(tag, message)
+        write('I', tag, message, null)
+    }
+    override fun w(tag: String, message: String) {
+        Log.w(tag, message)
+        write('W', tag, message, null)
+    }
+    override fun w(tag: String, message: String, throwable: Throwable) {
+        Log.w(tag, message, throwable)
+        write('W', tag, message, throwable)
+    }
+    override fun e(tag: String, message: String) {
+        Log.e(tag, message)
+        write('E', tag, message, null)
+    }
+    override fun e(tag: String, message: String, throwable: Throwable) {
+        Log.e(tag, message, throwable)
+        write('E', tag, message, throwable)
+    }
 
     companion object {
         private const val MAX_BYTES = 4L * 1024 * 1024 // rotate at 4 MB, keep 1 previous file

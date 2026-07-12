@@ -21,7 +21,11 @@ interface PhoneCommandExecutor {
     companion object {
         /** Commands the phone can serve. The core gates on this surface. */
         val SUPPORTED = setOf(
-            "location.get", "notify.show", "voice.activate", "camera.snap", "screen.record"
+            "location.get",
+            "notify.show",
+            "voice.activate",
+            "camera.snap",
+            "screen.record"
         )
     }
 }

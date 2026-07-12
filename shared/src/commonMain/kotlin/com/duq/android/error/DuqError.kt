@@ -59,7 +59,9 @@ sealed class DuqError(val message: String) {
             code != null && code >= 500 -> "Server error. Please try again."
             code == 401 || code == 403 -> "Authentication error. Please re-login."
             code == 404 -> "Not found."
-            message.contains("timeout", ignoreCase = true) || message.contains("timed out", ignoreCase = true) -> "Connection timed out. Please try again."
+            message.contains("timeout", ignoreCase = true) ||
+                message.contains("timed out", ignoreCase = true) ->
+                "Connection timed out. Please try again."
             else -> "Network error. Check your connection."
         }
         is AudioError -> "Audio error: $message"

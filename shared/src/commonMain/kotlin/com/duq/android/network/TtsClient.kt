@@ -22,6 +22,7 @@ class TtsClient(private val http: HttpClient) {
      * [messageId] is kept in the signature for parity with on-device TTS and lets the
      * caller key a filename when it writes the bytes out.
      */
+    @Suppress("UnusedParameter")
     suspend fun synthesize(text: String, messageId: String): ByteArray? {
         val resp = http.submitForm(
             url = AppConfig.TTS_URL,

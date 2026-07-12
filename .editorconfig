@@ -1,0 +1,8 @@
+root = true
+
+[*.{kt,kts}]
+# Compose-конвенция: wildcard-импорты androidx.compose.* идиоматичны (десятки символов на
+# экран — runtime/foundation.layout/material3/animation). Разрешаем on-demand ТОЛЬКО для них;
+# прочие wildcard'ы ktlint (NoWildcardImports) по-прежнему ловит.
+ij_kotlin_packages_to_use_import_on_demand = androidx.compose.**
+max_line_length = 140

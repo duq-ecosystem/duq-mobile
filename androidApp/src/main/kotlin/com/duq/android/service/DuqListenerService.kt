@@ -44,6 +44,7 @@ class DuqListenerService : Service(), VoiceServiceController {
         private const val TAG = "DuqListenerService"
         const val ACTION_START = "com.duq.android.START"
         const val ACTION_STOP = "com.duq.android.STOP"
+
         // Live instance — node screen.record может поднять mediaProjection-тип FGS на этом
         // же запущенном сервисе до getMediaProjection() (A14+). В KMP основной путь
         // screen.record — отдельный MediaProjectionForegroundService; метод оставлен для
@@ -55,8 +56,10 @@ class DuqListenerService : Service(), VoiceServiceController {
     // Koin-инъекции (koin-android by inject()) — синглтоны из общего графа.
     private val notificationManager: DuqNotificationManager by inject()
     private val voiceCommandProcessor: VoiceCommandProcessor by inject()
+
     // ЧАТ — клиент ядра DUQ (REST + поллинг + reasoning-стрим через DuqNodeClient).
     private val gatewayClient: DuqChatClient by inject()
+
     // phone-control — node-сессия bot→phone поверх двунаправленного /duq/ws (presence).
     private val nodeClient: DuqNodeClient by inject()
 
@@ -80,14 +83,18 @@ class DuqListenerService : Service(), VoiceServiceController {
         instance = this
         Log.d(TAG, "SERVICE CREATED — lean WS mode")
         voiceCommandProcessor.initializePlayer()
-        gatewayClient.start()      // чат: телефон → ядро DUQ (REST + поллинг)
-        nodeClient.start()         // phone-control: ядро DUQ → телефон (двунаправленный /duq/ws)
+        gatewayClient.start() // чат: телефон → ядро DUQ (REST + поллинг)
+        nodeClient.start() // phone-control: ядро DUQ → телефон (двунаправленный /duq/ws)
         collectIncomingMessages()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP -> { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return START_NOT_STICKY }
+            ACTION_STOP -> {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
             ACTION_START -> startForegroundServiceWithNotification()
         }
         return START_STICKY
@@ -108,7 +115,8 @@ class DuqListenerService : Service(), VoiceServiceController {
             var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 if (hasPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ||
-                    hasPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)) {
+                    hasPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                ) {
                     type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
                 }
                 if (hasPermission(android.Manifest.permission.CAMERA)) {

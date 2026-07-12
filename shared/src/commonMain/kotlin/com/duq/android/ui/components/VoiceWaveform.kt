@@ -16,7 +16,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.Dp
@@ -44,6 +43,7 @@ import kotlin.random.Random
  * @param color Primary bar color (defaults to AI cyan)
  */
 @Composable
+@Suppress("LongParameterList")
 fun VoiceWaveform(
     amplitudes: List<Float>,
     isActive: Boolean,
@@ -80,15 +80,6 @@ fun VoiceWaveform(
         val centerY = canvasHeight / 2
 
         val effectiveBarCount = minOf(barCount, (canvasWidth / totalBarWidth).toInt())
-
-        // Calculate gradient brush for glow effect
-        val gradientBrush = Brush.verticalGradient(
-            colors = listOf(
-                color.copy(alpha = 0.3f),
-                color,
-                color.copy(alpha = 0.3f)
-            )
-        )
 
         for (i in 0 until effectiveBarCount) {
             val x = (canvasWidth - effectiveBarCount * totalBarWidth) / 2 + i * totalBarWidth + barWidthPx / 2

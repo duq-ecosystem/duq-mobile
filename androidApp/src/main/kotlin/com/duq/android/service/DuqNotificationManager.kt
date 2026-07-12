@@ -36,13 +36,15 @@ class DuqNotificationManager(
     /** Постоянное уведомление foreground-сервиса — минимальное, беззвучное. */
     fun createServiceNotification(): Notification {
         val openIntent = PendingIntent.getActivity(
-            context, 0,
+            context,
+            0,
             // Тап по сервисному «Connected» → чат (а не прошлая панель).
             Intent(context, MainActivity::class.java).apply { putExtra("open_tab", "tab_chat") },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val stopIntent = PendingIntent.getService(
-            context, 0,
+            context,
+            0,
             Intent(context, DuqListenerService::class.java).apply { action = DuqListenerService.ACTION_STOP },
             PendingIntent.FLAG_IMMUTABLE
         )
@@ -112,7 +114,9 @@ class DuqNotificationManager(
             }
         }
         return PendingIntent.getActivity(
-            context, requestCode, intent,
+            context,
+            requestCode,
+            intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }

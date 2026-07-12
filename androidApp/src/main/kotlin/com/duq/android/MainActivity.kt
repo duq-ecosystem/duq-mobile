@@ -27,7 +27,9 @@ import com.duq.shared.App
 class MainActivity : ComponentActivity() {
 
     private val requestPermissions =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { /* результат не блокирует UI */ }
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { /* результат не блокирует UI */ }
 
     companion object {
         /**
@@ -86,11 +88,15 @@ class MainActivity : ComponentActivity() {
         val needed = buildList {
             if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED
-            ) add(Manifest.permission.RECORD_AUDIO)
+            ) {
+                add(Manifest.permission.RECORD_AUDIO)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
-            ) add(Manifest.permission.POST_NOTIFICATIONS)
+            ) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
         if (needed.isNotEmpty()) requestPermissions.launch(needed.toTypedArray())
     }

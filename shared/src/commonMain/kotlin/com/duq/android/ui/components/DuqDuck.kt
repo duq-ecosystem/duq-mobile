@@ -38,21 +38,22 @@ import kotlin.math.sin
  * заметно ярче и быстрее. В IDLE halo почти гаснет.
  */
 @Composable
+@Suppress("LongMethod", "CyclomaticComplexMethod")
 fun DuqDuck(
     state: DuqState?,
     modifier: Modifier = Modifier,
-    silhouetteAlpha: Float = 1f   // прозрачность ТОЛЬКО силуэта; halo всегда полной яркости
+    silhouetteAlpha: Float = 1f // прозрачность ТОЛЬКО силуэта; halo всегда полной яркости
 ) {
     val transition = rememberInfiniteTransition(label = "duck")
 
     // ── Цвет halo по статусу (плавный переход между состояниями) ──
     val targetHalo = when (state) {
-        DuqState.RECORDING -> Color(0xFFFF5252)            // запись — красный/коралл
-        DuqState.LISTENING -> Color(0xFFFFD54F)            // слушает — тёплый жёлтый
-        DuqState.PROCESSING -> Color(0xFF7C4DFF)           // распознаю/думаю — фиолетовый
-        DuqState.PLAYING -> Color(0xFF00E676)              // озвучка — зелёный
-        DuqState.ERROR -> Color(0xFFFF1744)                // ошибка — алый
-        else -> Color(0xFF5B8DEF)                          // idle — спокойный синий (еле виден)
+        DuqState.RECORDING -> Color(0xFFFF5252) // запись — красный/коралл
+        DuqState.LISTENING -> Color(0xFFFFD54F) // слушает — тёплый жёлтый
+        DuqState.PROCESSING -> Color(0xFF7C4DFF) // распознаю/думаю — фиолетовый
+        DuqState.PLAYING -> Color(0xFF00E676) // озвучка — зелёный
+        DuqState.ERROR -> Color(0xFFFF1744) // ошибка — алый
+        else -> Color(0xFF5B8DEF) // idle — спокойный синий (еле виден)
     }
     val haloColor by animateColorAsState(
         targetValue = targetHalo,
@@ -92,7 +93,8 @@ fun DuqDuck(
         else -> 1500
     }
     val bob by transition.animateFloat(
-        initialValue = -1f, targetValue = 1f,
+        initialValue = -1f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(bobMs, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "bob"
     )
@@ -105,7 +107,8 @@ fun DuqDuck(
     }
     val tiltMs = if (state == DuqState.LISTENING || state == DuqState.RECORDING) 420 else 2000
     val tilt by transition.animateFloat(
-        initialValue = -tiltDeg, targetValue = tiltDeg,
+        initialValue = -tiltDeg,
+        targetValue = tiltDeg,
         animationSpec = infiniteRepeatable(tween(tiltMs, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "tilt"
     )
@@ -125,7 +128,8 @@ fun DuqDuck(
         else -> 2200
     }
     val pulse by transition.animateFloat(
-        initialValue = 1f - pulseAmp, targetValue = 1f + pulseAmp,
+        initialValue = 1f - pulseAmp,
+        targetValue = 1f + pulseAmp,
         animationSpec = infiniteRepeatable(tween(pulseMs, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "pulse"
     )
@@ -142,7 +146,8 @@ fun DuqDuck(
         else -> 3200
     }
     val orbitAngle by transition.animateFloat(
-        initialValue = 0f, targetValue = 360f,
+        initialValue = 0f,
+        targetValue = 360f,
         animationSpec = infiniteRepeatable(tween(orbitMs, easing = LinearEasing), RepeatMode.Restart),
         label = "orbit"
     )
@@ -171,9 +176,11 @@ fun DuqDuck(
                                 0.45f to haloColor.copy(alpha = a * 0.45f),
                                 1f to Color.Transparent
                             ),
-                            center = center, radius = r
+                            center = center,
+                            radius = r
                         ),
-                        radius = r, center = center
+                        radius = r,
+                        center = center
                     )
                     // Орбитальные точки: по окружности, пульсируют по размеру, «хвост» по alpha.
                     if (orbitActive) {

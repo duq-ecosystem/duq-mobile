@@ -13,11 +13,11 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.ui.state.ToggleableState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,18 +55,24 @@ fun AgentsScreen(onBack: () -> Unit, vm: AgentsViewModel = koinViewModel()) {
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { creating = true },
-                containerColor = DuqColors.primary, contentColor = DuqColors.background
+                containerColor = DuqColors.primary,
+                contentColor = DuqColors.background
             ) { Icon(Icons.Outlined.Add, "Создать агента") }
         }
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             st.error?.let {
-                Text(it, color = DuqColors.accent, fontSize = 13.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                Text(
+                    it,
+                    color = DuqColors.accent,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
             }
             Text(
                 "Агент = тот же DUQ со своим набором тулов и отдельной памятью/историей.",
-                color = DuqColors.textDim, fontSize = 12.sp,
+                color = DuqColors.textDim,
+                fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
             LazyColumn(
@@ -84,15 +90,21 @@ fun AgentsScreen(onBack: () -> Unit, vm: AgentsViewModel = koinViewModel()) {
         }
     }
 
-    if (creating || editing != null) AgentSheet(
-        initial = editing,
-        toolCategories = st.toolCategories,
-        onDismiss = { creating = false; editing = null },
-        onSave = { id, name, desc, tools ->
-            vm.createAgent(id, name, desc, tools)   // POST = upsert (создание И редактирование)
-            creating = false; editing = null
-        }
-    )
+    if (creating || editing != null) {
+        AgentSheet(
+            initial = editing,
+            toolCategories = st.toolCategories,
+            onDismiss = {
+                creating = false
+                editing = null
+            },
+            onSave = { id, name, desc, tools ->
+                vm.createAgent(id, name, desc, tools) // POST = upsert (создание И редактирование)
+                creating = false
+                editing = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -169,21 +181,31 @@ private fun AgentSheet(
             ) {
                 Text(
                     if (editMode) "Редактировать агента" else "Новый агент",
-                    color = DuqColors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold
+                    color = DuqColors.textPrimary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
                 // id — ключ агента, при редактировании не меняется (показываем как текст).
                 if (editMode) {
                     Text("id: ${initial!!.id}", color = DuqColors.textSecondary, fontSize = 13.sp)
                 } else {
-                    AutoField(id, { id = it.lowercase().filter { c -> c.isLetterOrDigit() || c == '-' } }, "id (латиница, напр. recruiter)")
+                    AutoField(
+                        id,
+                        { id = it.lowercase().filter { c -> c.isLetterOrDigit() || c == '-' } },
+                        "id (латиница, напр. recruiter)"
+                    )
                 }
                 AutoField(name, { name = it }, "Имя агента")
                 AutoField(desc, { desc = it }, "Описание (зачем агент)")
 
                 Text(
-                    if (picked.isEmpty()) "Тулсет: все тулы (по правам). Выбери, чтобы ОГРАНИЧИТЬ:"
-                    else "Тулсет агента (${picked.size} выбрано):",
-                    color = DuqColors.textSecondary, fontSize = 13.sp
+                    if (picked.isEmpty()) {
+                        "Тулсет: все тулы (по правам). Выбери, чтобы ОГРАНИЧИТЬ:"
+                    } else {
+                        "Тулсет агента (${picked.size} выбрано):"
+                    },
+                    color = DuqColors.textSecondary,
+                    fontSize = 13.sp
                 )
                 CategorizedTools(toolCategories, picked)
             }
@@ -191,7 +213,10 @@ private fun AgentSheet(
             Button(
                 onClick = { if (id.isNotBlank() && name.isNotBlank()) onSave(id, name, desc, picked.toList()) },
                 enabled = id.isNotBlank() && name.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = DuqColors.primary, contentColor = DuqColors.background),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DuqColors.primary,
+                    contentColor = DuqColors.background
+                ),
                 modifier = Modifier.fillMaxWidth()
             ) { Text(if (editMode) "Сохранить" else "Создать агента") }
         }
@@ -229,14 +254,18 @@ private fun CategorizedTools(
                     },
                     onClick = {
                         // вкл всю категорию если не все выбраны, иначе выкл всю
-                        if (allOn) cat.tools.forEach { picked.remove(it) }
-                        else cat.tools.forEach { if (it !in picked) picked.add(it) }
+                        if (allOn) {
+                            cat.tools.forEach { picked.remove(it) }
+                        } else {
+                            cat.tools.forEach { if (it !in picked) picked.add(it) }
+                        }
                     },
                     colors = CheckboxDefaults.colors(checkedColor = DuqColors.primary)
                 )
                 Text(
                     "${cat.name}  ($selectedInCat/${cat.tools.size})",
-                    color = DuqColors.textPrimary, fontSize = 13.sp,
+                    color = DuqColors.textPrimary,
+                    fontSize = 13.sp,
                     modifier = Modifier.weight(1f)
                 )
                 Icon(

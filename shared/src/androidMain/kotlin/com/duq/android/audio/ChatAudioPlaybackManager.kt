@@ -5,10 +5,10 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.duq.android.logging.Logger
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.duq.android.logging.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -162,18 +162,21 @@ class ChatAudioPlaybackManager(
         val h = ByteArray(44)
         val byteRate = sampleRate * 2 // mono * 16bit
         fun le32(off: Int, v: Long) { for (i in 0..3) h[off + i] = ((v shr (8 * i)) and 0xFF).toByte() }
-        fun le16(off: Int, v: Int) { h[off] = (v and 0xFF).toByte(); h[off + 1] = ((v shr 8) and 0xFF).toByte() }
+        fun le16(off: Int, v: Int) {
+            h[off] = (v and 0xFF).toByte()
+            h[off + 1] = ((v shr 8) and 0xFF).toByte()
+        }
         "RIFF".toByteArray().copyInto(h, 0)
         le32(4, 36 + dataBytes)
         "WAVE".toByteArray().copyInto(h, 8)
         "fmt ".toByteArray().copyInto(h, 12)
-        le32(16, 16)          // PCM fmt chunk size
-        le16(20, 1)           // PCM
-        le16(22, 1)           // mono
+        le32(16, 16) // PCM fmt chunk size
+        le16(20, 1) // PCM
+        le16(22, 1) // mono
         le32(24, sampleRate.toLong())
         le32(28, byteRate.toLong())
-        le16(32, 2)           // block align (mono*16bit/8)
-        le16(34, 16)          // bits per sample
+        le16(32, 2) // block align (mono*16bit/8)
+        le16(34, 16) // bits per sample
         "data".toByteArray().copyInto(h, 36)
         le32(40, dataBytes)
         return h
@@ -283,8 +286,10 @@ class ChatAudioPlaybackManager(
                 player.prepare()
                 player.play()
 
-                flog.d(TAG, "playFile: setMediaItem+prepare+play вызваны id=${messageId.take(8)} file=${audioFile.name}")
-
+                flog.d(
+                    TAG,
+                    "playFile: setMediaItem+prepare+play вызваны id=${messageId.take(8)} file=${audioFile.name}"
+                )
             } catch (e: Exception) {
                 flog.e(TAG, "playFile ИСКЛЮЧЕНИЕ: ${e.message}")
                 _playbackInfo.value = PlaybackInfo()
@@ -418,7 +423,7 @@ class ChatAudioPlaybackManager(
      * Get cached audio file path for a message
      */
     private fun getCachedAudioFile(messageId: String): File {
-        return File(audioCacheDir, "msg_${messageId}.mp3")
+        return File(audioCacheDir, "msg_$messageId.mp3")
     }
 
     /**
@@ -456,7 +461,8 @@ class ChatAudioPlaybackManager(
                 if (byteRate <= 0) 0 else (dataBytes * 1000 / byteRate).toInt()
             }
         } catch (e: Exception) {
-            Log.w(TAG, "cachedDurationMs failed: ${e.message}"); 0
+            Log.w(TAG, "cachedDurationMs failed: ${e.message}")
+            0
         }
     }
 

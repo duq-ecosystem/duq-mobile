@@ -8,18 +8,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,9 +30,6 @@ import com.duq.android.data.model.Message
 import com.duq.android.data.model.MessageRole
 import com.duq.android.data.model.MessageStep
 import com.duq.android.data.model.VoicePhase
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.text.font.FontStyle
 import com.duq.android.ui.theme.DuqColors
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -53,13 +53,14 @@ import kotlinx.datetime.toLocalDateTime
  * градиентный фон (ветка else, напр. вне MessagesList).
  */
 @Composable
+@Suppress("LongMethod", "CyclomaticComplexMethod", "LongParameterList")
 fun MessageBubble(
     message: Message,
     modifier: Modifier = Modifier,
     isStreaming: Boolean = false,
     audioPlaybackState: AudioPlaybackState = AudioPlaybackState.IDLE,
     audioProgress: Float = 0f,
-    audioDurationMs: Int? = null,   // живая длительность из PlaybackInfo (msg.audioDurationMs не заполняется)
+    audioDurationMs: Int? = null, // живая длительность из PlaybackInfo (msg.audioDurationMs не заполняется)
     onAudioPlayPauseClick: () -> Unit = {},
     hazeState: HazeState? = null
 ) {
@@ -153,7 +154,7 @@ fun MessageBubble(
                     // past the corners as a halo — a shape-matched shadow tint glows
                     // the edge cleanly with no spill.
                     .then(
-                        if (isStreaming || !isUser)
+                        if (isStreaming || !isUser) {
                             Modifier.shadow(
                                 elevation = if (isStreaming) 14.dp else 5.dp,
                                 shape = bubbleShape,
@@ -161,18 +162,21 @@ fun MessageBubble(
                                 spotColor = glowColor.copy(alpha = if (isStreaming) glowAlpha else 0.18f),
                                 clip = false
                             )
-                        else Modifier
+                        } else {
+                            Modifier
+                        }
                     )
                     .clip(bubbleShape)
                     // Frosted glass: hazeEffect размывает утку с заднего фона под
                     // пузырём, сверху — полупрозрачный tint для читаемости текста.
                     .then(
-                        if (hazeState != null)
+                        if (hazeState != null) {
                             Modifier
                                 .hazeEffect(state = hazeState)
                                 .background(DuqColors.surface.copy(alpha = 0.42f))
-                        else
+                        } else {
                             Modifier.background(backgroundBrush)
+                        }
                     )
                     .border(
                         width = 1.dp,
@@ -438,9 +442,11 @@ private fun VoicePhaseBlock(phase: VoicePhase) {
             VoicePhase.RECORDING -> {
                 val t = rememberInfiniteTransition(label = "recDot")
                 val a by t.animateFloat(
-                    initialValue = 0.3f, targetValue = 1f,
+                    initialValue = 0.3f,
+                    targetValue = 1f,
                     animationSpec = infiniteRepeatable(
-                        tween(600, easing = FastOutSlowInEasing), RepeatMode.Reverse
+                        tween(600, easing = FastOutSlowInEasing),
+                        RepeatMode.Reverse
                     ),
                     label = "recDotAlpha"
                 )

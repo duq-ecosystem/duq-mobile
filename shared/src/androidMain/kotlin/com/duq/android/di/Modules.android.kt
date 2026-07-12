@@ -12,8 +12,8 @@ import com.duq.android.ui.AppUpdateController
 import com.duq.android.ui.AudioFileCache
 import com.duq.android.ui.CoreUpdateNotifier
 import com.duq.android.ui.NotificationInbox
-import com.russhwolf.settings.SharedPreferencesSettings
 import com.russhwolf.settings.Settings
+import com.russhwolf.settings.SharedPreferencesSettings
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.dsl.module

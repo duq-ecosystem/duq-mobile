@@ -33,7 +33,9 @@ class IosAudioFileCache(
                 val path = "$dir/msg_${sanitize(messageId)}.wav"
                 val data = audio.toNSData()
                 val ok = data.writeToFile(path, atomically = true)
-                if (ok) path else {
+                if (ok) {
+                    path
+                } else {
                     logger.e(TAG, "writeWav($messageId): writeToFile вернул false")
                     null
                 }
@@ -65,8 +67,12 @@ class IosAudioFileCache(
     private fun sanitize(name: String): String = name.replace(Regex("[^A-Za-z0-9._-]"), "_")
 
     private fun ByteArray.toNSData(): NSData =
-        if (isEmpty()) NSData() else usePinned { pinned ->
-            NSData.dataWithBytes(pinned.addressOf(0), size.toULong())
+        if (isEmpty()) {
+            NSData()
+        } else {
+            usePinned { pinned ->
+                NSData.dataWithBytes(pinned.addressOf(0), size.toULong())
+            }
         }
 
     private companion object {

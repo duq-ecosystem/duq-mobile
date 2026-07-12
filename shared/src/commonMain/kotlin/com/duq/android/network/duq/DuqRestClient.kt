@@ -72,7 +72,7 @@ class DuqRestClient(
         val uid = settings.getUserId()
         if (uid.isBlank()) return emptyList()
         val resp = client.get(url("family/members") + "?user_id=$uid")
-        if (!resp.status.isSuccess()) return emptyList()  // не admin → 403, просто пусто
+        if (!resp.status.isSuccess()) return emptyList() // не admin → 403, просто пусто
         return resp.body<FamilyMembersResponse>().members
     }
 
@@ -126,7 +126,10 @@ class DuqRestClient(
             contentType(ContentType.Application.Json)
             setBody(
                 MessageRequest(
-                    text, conversationId, if (newConversation) true else null, agentId,
+                    text,
+                    conversationId,
+                    if (newConversation) true else null,
+                    agentId,
                     userId = settings.getUserId().ifBlank { null },
                     modelId = modelId,
                 )
@@ -260,7 +263,11 @@ class DuqRestClient(
     }
 
     suspend fun updateCronTask(
-        taskId: String, cron: String? = null, skill: String? = null, name: String? = null, agentId: String? = null
+        taskId: String,
+        cron: String? = null,
+        skill: String? = null,
+        name: String? = null,
+        agentId: String? = null
     ) {
         val resp = client.patch(url("scheduler/tasks/$taskId")) {
             contentType(ContentType.Application.Json)

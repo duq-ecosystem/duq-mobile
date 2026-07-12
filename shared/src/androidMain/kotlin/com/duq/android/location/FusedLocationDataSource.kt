@@ -26,17 +26,17 @@ class FusedLocationDataSource(private val context: Context) : LocationDataSource
 
     companion object {
         private const val TAG = "FusedLocation"
-        private const val INTERVAL_MS = 24 * 60 * 60 * 1000L  // 24 hours
-        private const val SMALLEST_DISPLACEMENT_M = 25_000f   // 25 km — coarse location dedup
+        private const val INTERVAL_MS = 24 * 60 * 60 * 1000L // 24 hours
+        private const val SMALLEST_DISPLACEMENT_M = 25_000f // 25 km — coarse location dedup
     }
 
     private val client = LocationServices.getFusedLocationProviderClient(context)
 
     private fun hasPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-                PackageManager.PERMISSION_GRANTED ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-                PackageManager.PERMISSION_GRANTED
+            PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
 
     override suspend fun getLastLocation(): Location? {
         if (!hasPermission()) return null
