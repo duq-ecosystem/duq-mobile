@@ -88,13 +88,23 @@ class AndroidAppUpdateController(
             }
             logger.i(TAG, "Remote versionCode=$remoteCode, local=$currentVersionCode")
             if (remoteCode <= currentVersionCode) {
-                updatePrefs.edit().remove(KEY_AVAILABLE_VERSION).apply()
+                // Обновление уже установлено/снято — сбрасываем и «доступную», и «уведомлённую»
+                // версии, чтобы БУДУЩАЯ новая версия снова подняла уведомление.
+                updatePrefs.edit().remove(KEY_AVAILABLE_VERSION).remove(KEY_NOTIFIED_VERSION).apply()
                 nm.cancel(NOTIFY_ID)
                 return@withContext 0
             }
             updatePrefs.edit().putInt(KEY_AVAILABLE_VERSION, remoteCode).apply()
-            if (notificationsEnabled) showAvailableNotification(remoteCode)
-            logger.i(TAG, "Доступно обновление: $remoteCode (баннер + уведомление)")
+            // Уведомление (шторка + запись в ленту) — ОДИН раз на версию. checkAvailable() зовётся
+            // на КАЖДЫЙ ON_RESUME; без этой отсечки повторные выводы приложения на передний план
+            // плодили дубли в ленте (AndroidNotificationInbox.record дедупа по контенту не имеет).
+            if (notificationsEnabled && updatePrefs.getInt(KEY_NOTIFIED_VERSION, 0) != remoteCode) {
+                showAvailableNotification(remoteCode)
+                updatePrefs.edit().putInt(KEY_NOTIFIED_VERSION, remoteCode).apply()
+                logger.i(TAG, "Доступно обновление: $remoteCode (баннер + уведомление, первый раз)")
+            } else {
+                logger.i(TAG, "Доступно обновление: $remoteCode (баннер; уведомление уже показано)")
+            }
             remoteCode
         } catch (e: CancellationException) {
             throw e
@@ -344,6 +354,10 @@ class AndroidAppUpdateController(
         const val NOTIFY_ID = 9001
         const val UPDATE_PREFS = "duq_update"
         const val KEY_AVAILABLE_VERSION = "available_version"
+
+        // Версия, для которой уведомление (шторка+лента) уже показано — чтобы не дублировать
+        // на каждом ON_RESUME. Сбрасывается, когда обновление установлено (remoteCode<=local).
+        const val KEY_NOTIFIED_VERSION = "notified_version"
 
         // Точка входа androidApp (тап по пушу обновления → MainActivity, раздел «Версия»).
         const val LAUNCH_ACTIVITY = "com.duq.android.MainActivity"
