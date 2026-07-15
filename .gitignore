@@ -12,3 +12,7 @@ app/build/
 *.apk
 .kotlin/
 .claude/
+
+# Gradle build outputs
+build/
+*/build/
