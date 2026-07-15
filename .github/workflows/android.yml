@@ -68,6 +68,16 @@ jobs:
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > androidApp/duq-release.jks
         fi
 
+    # Публичный SHA-256 fingerprint релизной подписи (нужен BotFather Login Widget для App Links
+    # autoVerify входа через Telegram). Fingerprint не секрет — он и так вшит в подписанный APK.
+    - name: Print release signing SHA-256
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        keytool -list -v -keystore androidApp/duq-release.jks \
+          -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+          -alias "${{ secrets.KEY_ALIAS }}" \
+          -keypass "${{ secrets.KEY_PASSWORD }}" | grep -i "SHA256:"
+
     - name: Build release APK
       run: ./gradlew :androidApp:assembleRelease --no-daemon --build-cache
       env:
