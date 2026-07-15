@@ -39,6 +39,7 @@ class SettingsRepository(private val settings: Settings) {
         private const val KEY_ACCOUNTS = "duq_accounts" // мультиаккаунт: список сохранённых
         private const val KEY_ACTIVE_USER = "duq_active_user" // активный user_id
         private const val KEY_SERVER_TOKEN = "duq_server_token"
+        private const val KEY_USER_TOKEN = "duq_user_token" // per-user auth_token (Telegram-вход)
 
         const val DEFAULT_WAKE_WORD_SENSITIVITY = 0.9f
         const val DEFAULT_SILENCE_TIMEOUT_MS = 2000L
@@ -110,6 +111,17 @@ class SettingsRepository(private val settings: Settings) {
     // входе — НЕ зашит в билд. Идёт в X-Auth-Token на всех запросах (см. DuqHttpClient).
     fun getServerToken(): String = settings[KEY_SERVER_TOKEN, ""]
     fun saveServerToken(token: String) { settings[KEY_SERVER_TOKEN] = token }
+
+    // Per-user токен (auth_token), выданный при входе через Telegram Login Widget. Пойдёт в
+    // X-User-Token, когда клиент начнёт слать его наравне с общим edge-токеном.
+    fun getUserToken(): String = settings[KEY_USER_TOKEN, ""]
+    fun saveUserToken(token: String) { settings[KEY_USER_TOKEN] = token }
+
+    /** Вход через Telegram: сохранить аккаунт (из deep-link callback) и сделать активным. */
+    fun applyTelegramLogin(userId: String, name: String, role: String, userToken: String) {
+        if (userToken.isNotBlank()) saveUserToken(userToken)
+        upsertActiveAccount(userId, name, role)
+    }
 
     /** Last lat/lng reported to DUQ — used to suppress duplicate reports across restarts. */
     fun getLastReportedLocation(): Pair<Double, Double>? {

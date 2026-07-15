@@ -46,6 +46,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Вход через Telegram Login Widget: сервер редиректит браузер на
+                 duq://auth/telegram?... → перехватываем в MainActivity.routeDeepLink. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="duq" android:host="auth" />
+            </intent-filter>
         </activity>
 
         <!-- Статус PackageInstaller-сессии для self-update (AndroidAppUpdateController →

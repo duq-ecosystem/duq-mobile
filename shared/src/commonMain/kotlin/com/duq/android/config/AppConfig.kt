@@ -19,6 +19,14 @@ object AppConfig {
     const val DUQ_API_BASE_URL = "$BASE_URL/duq/api/"
     const val DUQ_WS_URL = "wss://on-za-menya.online/duq/ws"
 
+    // Вход через Telegram Login Widget: страница с виджетом (открывается в браузере/Custom Tab),
+    // callback редиректит обратно в приложение по deep link ниже. Self-hosted: свой BASE_URL.
+    const val TELEGRAM_LOGIN_URL = "$BASE_URL/api/auth/telegram/login"
+    // Deep link, которым сервер возвращает управление в приложение (см. TELEGRAM_LOGIN_APP_REDIRECT
+    // на сервере + intent-filter в AndroidManifest). scheme=duq, host=auth, path=/telegram.
+    const val TELEGRAM_LOGIN_DEEPLINK_SCHEME = "duq"
+    const val TELEGRAM_LOGIN_DEEPLINK_HOST = "auth"
+
     const val LOG_TIMEZONE = "Asia/Almaty"
 
     // Self-update (GitHub Releases). На фазе CI цель будет переключена на duq-mobile.

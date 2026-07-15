@@ -33,6 +33,7 @@ import com.duq.android.ui.control.CommandPalette
 import com.duq.android.ui.control.NotificationsShade
 import com.duq.android.ui.control.SectionScreen
 import com.duq.android.ui.theme.DuqColors
+import io.ktor.http.decodeURLQueryComponent
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import org.koin.compose.koinInject
@@ -67,7 +68,19 @@ object DeepLinkState {
 
     // Вкладка нижней навигации (напр. "tab_chat" по обычному message-пушу).
     val tabEvents = Channel<String>(Channel.UNLIMITED)
+
+    // Вход через Telegram Login Widget: raw query из deep-link callback
+    // (token/user_id/name/role). Эмитит Activity (duq://auth/telegram), DuqApp потребляет.
+    val telegramLoginEvents = Channel<String>(Channel.UNLIMITED)
 }
+
+/** Разобрать raw query "a=1&b=2" в map с URL-декодом значений (Telegram-callback deep link). */
+internal fun parseQuery(raw: String): Map<String, String> =
+    raw.split("&").mapNotNull { pair ->
+        val i = pair.indexOf('=')
+        if (i <= 0) null
+        else pair.substring(0, i) to pair.substring(i + 1).decodeURLQueryComponent(plusIsSpace = true)
+    }.toMap()
 
 /**
  * Корень DUQ (Compose Multiplatform): NavHost оболочка (Чат/Пульт) + Настройки поверх.
@@ -77,6 +90,7 @@ object DeepLinkState {
 fun DuqApp(
     audioPlaybackManager: AudioPlaybackManager = koinInject(),
     settings: com.duq.android.data.SettingsRepository = koinInject(),
+    nodeClient: com.duq.android.network.duq.DuqNodeClient = koinInject(),
 ) {
     val navController = rememberNavController()
 
@@ -88,6 +102,27 @@ fun DuqApp(
     // переключение меняет activeUser → ниже всё (включая чат-VM) пересоздаётся по key(activeUser),
     // чтобы данные были нового юзера. Никакой авто-регистрации.
     var activeUser by remember { mutableStateOf(settings.getUserId()) }
+
+    // Вход через Telegram (deep-link callback duq://auth/telegram?token=&user_id=&name=&role=).
+    // Приёмник ВЫШЕ гейта — иначе на экране входа (return ниже) он бы не подписался и вход бы
+    // не завершился. Сохраняем аккаунт, реконнектим WS под новый user_id, снимаем гейт.
+    LaunchedEffect(Unit) {
+        DeepLinkState.telegramLoginEvents.receiveAsFlow().collect { rawQuery ->
+            val params = parseQuery(rawQuery)
+            val uid = params["user_id"].orEmpty()
+            if (uid.isNotBlank()) {
+                settings.applyTelegramLogin(
+                    userId = uid,
+                    name = params["name"].orEmpty(),
+                    role = params["role"].orEmpty(),
+                    userToken = params["token"].orEmpty(),
+                )
+                nodeClient.reconnect()
+                activeUser = uid
+            }
+        }
+    }
+
     if (activeUser.isBlank()) {
         RegistrationScreen(onRegistered = { activeUser = settings.getUserId() })
         return

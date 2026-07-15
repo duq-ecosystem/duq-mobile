@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.duq.android.config.AppConfig
 import com.duq.android.ui.DeepLinkState
 import com.duq.android.ui.control.AppChrome
 import com.duq.shared.App
@@ -72,6 +73,16 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("open_section")?.let { DeepLinkState.sectionEvents.trySend(it) }
         intent.getStringExtra("open_tab")?.let { DeepLinkState.tabEvents.trySend(it) }
         if (intent.getStringExtra("open_notifications") == "digest") AppChrome.openShade(1)
+
+        // URI deep link входа через Telegram: сервер редиректит браузер на
+        // duq://auth/telegram?token=&user_id=&name=&role= → отдаём raw query в DuqApp-приёмник.
+        val data = intent.data
+        if (data != null &&
+            data.scheme == AppConfig.TELEGRAM_LOGIN_DEEPLINK_SCHEME &&
+            data.host == AppConfig.TELEGRAM_LOGIN_DEEPLINK_HOST
+        ) {
+            data.query?.let { DeepLinkState.telegramLoginEvents.trySend(it) }
+        }
     }
 
     override fun onStart() {
