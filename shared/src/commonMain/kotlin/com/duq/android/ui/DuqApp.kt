@@ -78,8 +78,11 @@ object DeepLinkState {
 internal fun parseQuery(raw: String): Map<String, String> =
     raw.split("&").mapNotNull { pair ->
         val i = pair.indexOf('=')
-        if (i <= 0) null
-        else pair.substring(0, i) to pair.substring(i + 1).decodeURLQueryComponent(plusIsSpace = true)
+        if (i <= 0) {
+            null
+        } else {
+            pair.substring(0, i) to pair.substring(i + 1).decodeURLQueryComponent(plusIsSpace = true)
+        }
     }.toMap()
 
 /**
