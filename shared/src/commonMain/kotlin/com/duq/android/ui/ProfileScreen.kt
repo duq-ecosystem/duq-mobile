@@ -71,6 +71,7 @@ fun ProfileScreen(
     var accounts by remember { mutableStateOf(repo.getAccounts()) }
     var members by remember { mutableStateOf<List<FamilyMember>>(emptyList()) }
     var status by remember { mutableStateOf("") }
+    val snackbarHost = remember { SnackbarHostState() } // всплывашка результата привязки Telegram
 
     suspend fun reload() {
         runCatching { info = rest.integrations() }
@@ -80,10 +81,15 @@ fun ProfileScreen(
     LaunchedEffect(Unit) { reload() }
 
     // Результат привязки Telegram (кнопка ниже → native SDK → DuqApp-приёмник → сюда).
+    // Успех → reload (карточка станет «подключено»); ошибка → всплывашка с ПРИЧИНОЙ.
     LaunchedEffect(Unit) {
         DeepLinkState.telegramLinkResults.receiveAsFlow().collect { res ->
-            status = if (res == "ok") "Telegram привязан" else res
-            if (res == "ok") reload()
+            if (res == "ok") {
+                reload()
+                snackbarHost.showSnackbar("Telegram привязан")
+            } else {
+                snackbarHost.showSnackbar(res)
+            }
         }
     }
 
@@ -92,6 +98,7 @@ fun ProfileScreen(
 
     Scaffold(
         containerColor = DuqColors.background,
+        snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             TopAppBar(
                 title = { Text("Профиль") },
