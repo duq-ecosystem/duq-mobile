@@ -72,6 +72,23 @@ class DuqRestClient(
         uid
     }
 
+    /**
+     * Привязать Telegram к ТЕКУЩЕМУ юзеру (кнопка «Привязать телеграм» в профиле). Тот же
+     * native id_token, но endpoint /link с текущим user_id — не создаёт нового юзера.
+     * Бросает DuqApiException при 409 (telegram уже у другого) или иной ошибке.
+     */
+    suspend fun linkTelegram(idToken: String): Boolean = regMutex.withLock {
+        val uid = settings.getUserId()
+        if (uid.isBlank()) throw DuqApiException("not logged in")
+        val resp = client.post(AppConfig.TELEGRAM_NATIVE_LINK_URL) {
+            contentType(ContentType.Application.Json)
+            setBody(TelegramLinkRequest(idToken, uid))
+        }
+        if (resp.status.value == 409) throw DuqApiException("Этот Telegram уже привязан к другому аккаунту")
+        if (!resp.status.isSuccess()) throw DuqApiException("telegram link ${resp.status}")
+        true
+    }
+
     /** Google OAuth: получить URL для входа в браузере (per-user). Бросает с текстом, если
      *  сервер не настроен (нет GOOGLE_CLIENT_ID) — app покажет внятно. */
     suspend fun googleAuthUrl(): String {

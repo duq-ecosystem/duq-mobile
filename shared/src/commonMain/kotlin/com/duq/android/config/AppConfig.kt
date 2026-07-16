@@ -40,6 +40,9 @@ object AppConfig {
     // На /api/* (не /duq/*) — как telegram/google callback, открыт в nginx без edge-токена.
     const val TELEGRAM_NATIVE_LOGIN_URL = "$BASE_URL/api/auth/telegram/native"
 
+    // Привязка Telegram к текущему юзеру (кнопка «Привязать телеграм» в профиле).
+    const val TELEGRAM_NATIVE_LINK_URL = "$BASE_URL/api/auth/telegram/link"
+
     const val LOG_TIMEZONE = "Asia/Almaty"
 
     // Self-update (GitHub Releases). На фазе CI цель будет переключена на duq-mobile.

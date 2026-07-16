@@ -46,6 +46,10 @@ object AppChrome {
     // Запуск native Telegram Login SDK (устанавливает MainActivity: нужен Activity-контекст).
     var startTelegramLogin: () -> Unit = {}
 
+    // true → следующий Telegram-результат трактуется как ПРИВЯЗКА к текущему юзеру (профиль),
+    // а не вход/создание. Ставится кнопкой «Привязать телеграм» перед startTelegramLogin.
+    var telegramLinkMode: Boolean = false
+
     fun openShade(tab: Int = 0) {
         notificationsTab = tab
         showNotifications = true

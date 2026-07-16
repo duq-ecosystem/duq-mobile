@@ -62,6 +62,13 @@ data class TelegramNativeRequest(
     @SerialName("id_token") val idToken: String
 )
 
+/** Привязка Telegram к существующему юзеру: id_token + текущий user_id. */
+@Serializable
+data class TelegramLinkRequest(
+    @SerialName("id_token") val idToken: String,
+    @SerialName("user_id") val userId: String
+)
+
 /** Член семьи (для admin-списка всех зареганых, GET /api/family/members). */
 @Serializable
 data class FamilyMember(
@@ -94,7 +101,8 @@ data class IntegrationsResponse(
 @Serializable
 data class IntegrationsStatus(
     val google: Boolean = false,
-    val obsidian: Boolean = false
+    val obsidian: Boolean = false,
+    val telegram: Boolean = false
 )
 
 /** Привязка E2EE-волта юзера (POST /api/integrations/obsidian). */

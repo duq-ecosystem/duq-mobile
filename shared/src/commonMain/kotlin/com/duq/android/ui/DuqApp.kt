@@ -76,6 +76,10 @@ object DeepLinkState {
     // Native Telegram Login SDK: id_token из handleLoginResponse. Эмитит Activity
     // (app{client_id}-login.tg.dev/tglogin), DuqApp шлёт на /api/auth/telegram/native.
     val telegramNativeLoginEvents = Channel<String>(Channel.UNLIMITED)
+
+    // Результат привязки Telegram к текущему юзеру (профиль): "ok" | текст ошибки.
+    // ProfileScreen слушает → обновляет статус интеграций и показывает сообщение.
+    val telegramLinkResults = Channel<String>(Channel.UNLIMITED)
 }
 
 /** Разобрать raw query "a=1&b=2" в map с URL-декодом значений (Telegram-callback deep link). */
@@ -138,6 +142,16 @@ fun DuqApp(
     // выше гейта, чтобы завершить вход с экрана RegistrationScreen.
     LaunchedEffect(Unit) {
         DeepLinkState.telegramNativeLoginEvents.receiveAsFlow().collect { idToken ->
+            // Режим ПРИВЯЗКИ (кнопка в профиле): добавляем telegram к текущему юзеру, НЕ входим/
+            // создаём. Результат — в ProfileScreen через telegramLinkResults.
+            if (AppChrome.telegramLinkMode) {
+                AppChrome.telegramLinkMode = false
+                println("DuqTgLogin: got idToken, POST /link")
+                val msg = runCatching { rest.linkTelegram(idToken) }
+                    .fold(onSuccess = { "ok" }, onFailure = { it.message ?: "Ошибка привязки" })
+                DeepLinkState.telegramLinkResults.trySend(msg)
+                return@collect
+            }
             println("DuqTgLogin: got idToken (len=${idToken.length}), POST /native")
             runCatching { rest.nativeTelegramLogin(idToken) }.onSuccess { uid ->
                 println("DuqTgLogin: native login OK uid=$uid")

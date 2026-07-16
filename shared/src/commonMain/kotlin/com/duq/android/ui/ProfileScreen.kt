@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Delete
@@ -34,6 +35,7 @@ import com.duq.android.network.duq.DuqNodeClient
 import com.duq.android.network.duq.DuqRestClient
 import com.duq.android.network.duq.FamilyMember
 import com.duq.android.network.duq.IntegrationsResponse
+import com.duq.android.ui.control.AppChrome
 import com.duq.android.ui.theme.DuqColors
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -75,6 +77,14 @@ fun ProfileScreen(
         accounts = repo.getAccounts()
     }
     LaunchedEffect(Unit) { reload() }
+
+    // Результат привязки Telegram (кнопка ниже → native SDK → DuqApp-приёмник → сюда).
+    LaunchedEffect(Unit) {
+        DeepLinkState.telegramLinkResults.receiveAsFlow().collect { res ->
+            status = if (res == "ok") "Telegram привязан" else res
+            if (res == "ok") reload()
+        }
+    }
 
     val role = info.role.ifBlank { repo.getUserRole() }
     val isAdmin = role == "admin" || role == "root"
@@ -193,6 +203,7 @@ fun ProfileScreen(
                 onLinked = { scope.launch { reload() } }
             )
             GoogleCard(connected = info.integrations.google, rest = rest)
+            TelegramCard(connected = info.integrations.telegram)
 
             Spacer(Modifier.height(8.dp))
         }
@@ -347,6 +358,55 @@ private fun GoogleCard(connected: Boolean, rest: DuqRestClient) {
             if (err.isNotBlank()) {
                 Text(err, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
+        }
+    }
+}
+
+/** Telegram: статус + «Привязать телеграм» → native SDK-вход в режиме ПРИВЯЗКИ к текущему юзеру. */
+@Composable
+private fun TelegramCard(connected: Boolean) {
+    Column(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+            .background(DuqColors.surfaceVariant).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Icon(
+                Icons.AutoMirrored.Outlined.Send,
+                "Telegram",
+                tint = DuqColors.textSecondary,
+                modifier = Modifier.size(26.dp),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Telegram",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    "Вход и связь через Telegram",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = DuqColors.textDim,
+                )
+            }
+            StatusChip(connected)
+        }
+        if (!connected) {
+            Text(
+                "Привяжи свой Telegram к этому аккаунту — сможешь входить через Telegram и общаться с ботом от этого юзера.",
+                style = MaterialTheme.typography.bodySmall,
+                color = DuqColors.textDim,
+            )
+            Button(
+                onClick = {
+                    AppChrome.telegramLinkMode = true
+                    AppChrome.startTelegramLogin()
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Привязать телеграм") }
         }
     }
 }
