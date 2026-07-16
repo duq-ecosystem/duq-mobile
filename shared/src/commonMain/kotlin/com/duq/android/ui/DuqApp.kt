@@ -127,6 +127,9 @@ fun DuqApp(
                 )
                 nodeClient.reconnect()
                 activeUser = uid
+                // Если вход шёл с Login-роута («войти под другим»), смены activeUser мало —
+                // NavHost остаётся на форме. Возвращаем на чат (no-op, если стек уже там).
+                navController.popBackStack(Screen.Shell.route, inclusive = false)
             }
         }
     }
@@ -135,9 +138,15 @@ fun DuqApp(
     // выше гейта, чтобы завершить вход с экрана RegistrationScreen.
     LaunchedEffect(Unit) {
         DeepLinkState.telegramNativeLoginEvents.receiveAsFlow().collect { idToken ->
+            println("DuqTgLogin: got idToken (len=${idToken.length}), POST /native")
             runCatching { rest.nativeTelegramLogin(idToken) }.onSuccess { uid ->
+                println("DuqTgLogin: native login OK uid=$uid")
                 nodeClient.reconnect()
                 activeUser = uid
+                // Вход с Login-роута («войти под другим») — вернуть на чат (иначе форма висит).
+                navController.popBackStack(Screen.Shell.route, inclusive = false)
+            }.onFailure { e ->
+                println("DuqTgLogin: native login FAILED: ${e.message}")
             }
         }
     }

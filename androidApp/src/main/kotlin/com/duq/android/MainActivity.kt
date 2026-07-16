@@ -89,13 +89,21 @@ class MainActivity : ComponentActivity() {
 
         // Native Telegram Login SDK: Telegram-приложение вернуло результат на App Link
         // app{client_id}-login.tg.dev/tglogin. Отдаём URI в SDK → получаем id_token → в приёмник.
+        if (data != null) {
+            android.util.Log.i("DuqTgLogin", "deep-link ${data.scheme}://${data.host}${data.path}")
+        }
         if (data != null && data.host == AppConfig.TELEGRAM_NATIVE_REDIRECT_HOST) {
+            android.util.Log.i("DuqTgLogin", "native redirect matched")
             org.telegram.login.TelegramLogin.handleLoginResponse(
                 data,
                 onSuccess = { loginData ->
+                    val n = loginData.idToken.length
+                    android.util.Log.i("DuqTgLogin", "SDK onSuccess idToken.len=$n")
                     DeepLinkState.telegramNativeLoginEvents.trySend(loginData.idToken)
                 },
-                onError = { /* невалидный/отменённый вход — молча, юзер вернётся на экран входа */ },
+                onError = { error ->
+                    android.util.Log.e("DuqTgLogin", "SDK onError: ${error.message}")
+                },
             )
         }
     }
