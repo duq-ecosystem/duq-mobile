@@ -46,13 +46,25 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Вход через Telegram Login Widget: сервер редиректит браузер на
-                 duq://auth/telegram?... → перехватываем в MainActivity.routeDeepLink. -->
+            <!-- Вход через Telegram Login Widget (классический, fallback): сервер редиректит браузер
+                 на duq://auth/telegram?... → перехватываем в MainActivity.routeDeepLink. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="duq" android:host="auth" />
+            </intent-filter>
+            <!-- Native Telegram Login SDK (бесшовный): Telegram-приложение возвращает результат на
+                 App Link app{client_id}-login.tg.dev/tglogin. autoVerify — Android сверяет владение
+                 доменом по SHA-256 подписи (assetlinks на домене генерит Telegram). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="app2402587810-login.tg.dev"
+                    android:pathPrefix="/tglogin" />
             </intent-filter>
         </activity>
 

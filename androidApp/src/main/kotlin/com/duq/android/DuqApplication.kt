@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.os.Build
 import androidx.core.content.ContextCompat
+import com.duq.android.config.AppConfig
 import com.duq.android.config.AppSecrets
 import com.duq.android.di.appAndroidModule
 import com.duq.android.di.sharedModules
@@ -31,6 +32,13 @@ class DuqApplication : Application() {
         super.onCreate()
         AppSecrets.serverToken = BuildConfig.SERVER_TOKEN
         AppSecrets.githubReleaseToken = BuildConfig.GH_RELEASE_TOKEN
+        // Native Telegram Login SDK: бесшовный вход через приложение Telegram. init до первого
+        // startLogin. Скоупы profile+phone — минимум для идентификации (sub=telegram id).
+        org.telegram.login.TelegramLogin.init(
+            clientId = AppConfig.TELEGRAM_CLIENT_ID,
+            redirectUri = AppConfig.TELEGRAM_NATIVE_REDIRECT_URI,
+            scopes = listOf("profile", "phone"),
+        )
         startKoin {
             androidContext(this@DuqApplication)
             modules(sharedModules() + appAndroidModule)

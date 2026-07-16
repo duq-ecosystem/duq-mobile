@@ -12,6 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: read
+    # Креды GitHub Packages для native Telegram Login SDK (org.telegram:login-sdk). Нужны и
+    # detekt-, и build-шагам (оба резолвят зависимости). GH_RELEASE_TOKEN — PAT со scope read:packages.
+    env:
+      GITHUB_USERNAME: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
 
     steps:
     - uses: actions/checkout@v4

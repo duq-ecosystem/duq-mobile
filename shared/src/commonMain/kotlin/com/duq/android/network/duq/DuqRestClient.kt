@@ -54,6 +54,24 @@ class DuqRestClient(
         uid
     }
 
+    /**
+     * Native-вход через Telegram Login SDK: приложение получило подписанный id_token от
+     * приложения Telegram, шлёт его ядру. Ядро верифицирует подпись (JWKS) и резолвит юзера
+     * по telegram-identity — ТОТ ЖЕ UUID, что и у бота. Сохраняем аккаунт активным.
+     */
+    suspend fun nativeTelegramLogin(idToken: String): String = regMutex.withLock {
+        val resp = client.post(AppConfig.TELEGRAM_NATIVE_LOGIN_URL) {
+            contentType(ContentType.Application.Json)
+            setBody(TelegramNativeRequest(idToken))
+        }
+        if (!resp.status.isSuccess()) throw DuqApiException("telegram native login ${resp.status}")
+        val r = resp.body<RegisterResponse>()
+        val uid = r.userId ?: throw DuqApiException("telegram native login: no user_id")
+        if (r.token.isNotBlank()) settings.saveUserToken(r.token)
+        settings.upsertActiveAccount(uid, r.name, r.role)
+        uid
+    }
+
     /** Google OAuth: получить URL для входа в браузере (per-user). Бросает с текстом, если
      *  сервер не настроен (нет GOOGLE_CLIENT_ID) — app покажет внятно. */
     suspend fun googleAuthUrl(): String {

@@ -9,13 +9,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.duq.android.config.AppConfig
 import com.duq.android.data.SettingsRepository
 import com.duq.android.network.duq.DuqNodeClient
 import com.duq.android.network.duq.DuqRestClient
+import com.duq.android.ui.control.AppChrome
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -36,7 +35,6 @@ fun RegistrationScreen(
     nodeClient: DuqNodeClient = koinInject(),
 ) {
     val scope = rememberCoroutineScope()
-    val uriHandler = LocalUriHandler.current
     var name by remember { mutableStateOf("") }
     var token by remember { mutableStateOf(repo.getServerToken()) }
     var status by remember { mutableStateOf("") }
@@ -104,12 +102,14 @@ fun RegistrationScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(if (busy) "Вхожу…" else "Войти") }
 
-            // Альтернативный путь входа — через официальный Telegram Login Widget. Открывает
-            // страницу входа в браузере; после авторизации сервер вернёт в приложение по
-            // deep link (duq://auth/telegram) с per-user токеном — вход завершит DuqApp-приёмник.
+            // Вход через официальный native Telegram Login SDK — бесшовно, через приложение
+            // Telegram (без браузера/номера). SDK вернёт id_token на App Link → DuqApp-приёмник
+            // отправит его ядру и завершит вход. Запуск SDK требует Activity — через AppChrome-хук
+            // (устанавливает MainActivity). Классический веб-виджет (TELEGRAM_LOGIN_URL) остаётся
+            // серверным fallback, но кнопка ведёт на бесшовный native.
             Text("или", style = MaterialTheme.typography.bodySmall)
             OutlinedButton(
-                onClick = { uriHandler.openUri(AppConfig.TELEGRAM_LOGIN_URL) },
+                onClick = { AppChrome.startTelegramLogin() },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Войти через Telegram") }

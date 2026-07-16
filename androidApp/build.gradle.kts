@@ -98,4 +98,6 @@ dependencies {
     implementation(libs.koin.android)
     // WorkManager: периодическая фоновая самопроверка обновлений (UpdateWorker).
     implementation(libs.androidx.work.runtime)
+    // Официальный native Telegram Login SDK: бесшовный вход через приложение Telegram (id_token).
+    implementation("org.telegram:login-sdk:1.0.0")
 }

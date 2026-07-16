@@ -47,6 +47,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestStartupPermissions()
+        // Кнопка «Войти через Telegram» (shared UI) дёргает этот хук — native SDK нужен
+        // Activity-контекст, которого нет в commonMain. Переустанавливаем на каждый onCreate.
+        AppChrome.startTelegramLogin = { org.telegram.login.TelegramLogin.startLogin(this) }
         routeDeepLink(intent)
         setContent { App() }
     }
@@ -82,6 +85,18 @@ class MainActivity : ComponentActivity() {
             data.host == AppConfig.TELEGRAM_LOGIN_DEEPLINK_HOST
         ) {
             data.query?.let { DeepLinkState.telegramLoginEvents.trySend(it) }
+        }
+
+        // Native Telegram Login SDK: Telegram-приложение вернуло результат на App Link
+        // app{client_id}-login.tg.dev/tglogin. Отдаём URI в SDK → получаем id_token → в приёмник.
+        if (data != null && data.host == AppConfig.TELEGRAM_NATIVE_REDIRECT_HOST) {
+            org.telegram.login.TelegramLogin.handleLoginResponse(
+                data,
+                onSuccess = { loginData ->
+                    DeepLinkState.telegramNativeLoginEvents.trySend(loginData.idToken)
+                },
+                onError = { /* невалидный/отменённый вход — молча, юзер вернётся на экран входа */ },
+            )
         }
     }
 

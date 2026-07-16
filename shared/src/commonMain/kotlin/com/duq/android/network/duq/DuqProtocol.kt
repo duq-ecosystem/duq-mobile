@@ -52,7 +52,14 @@ data class RegisterResponse(
     val success: Boolean = false,
     @SerialName("user_id") val userId: String? = null,
     val name: String = "",
-    val role: String = ""
+    val role: String = "",
+    val token: String = "" // per-user auth_token (Telegram-вход выдаёт; app-регистрация тоже)
+)
+
+/** Native-вход через Telegram Login SDK: приложение шлёт подписанный Telegram id_token. */
+@Serializable
+data class TelegramNativeRequest(
+    @SerialName("id_token") val idToken: String
 )
 
 /** Член семьи (для admin-списка всех зареганых, GET /api/family/members). */

@@ -43,6 +43,9 @@ object AppChrome {
     var openSettings: () -> Unit = {}
     var openProfile: () -> Unit = {} // профиль — с любого экрана через аватар в топбаре
 
+    // Запуск native Telegram Login SDK (устанавливает MainActivity: нужен Activity-контекст).
+    var startTelegramLogin: () -> Unit = {}
+
     fun openShade(tab: Int = 0) {
         notificationsTab = tab
         showNotifications = true

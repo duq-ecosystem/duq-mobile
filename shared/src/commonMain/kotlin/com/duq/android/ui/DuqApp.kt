@@ -72,6 +72,10 @@ object DeepLinkState {
     // Вход через Telegram Login Widget: raw query из deep-link callback
     // (token/user_id/name/role). Эмитит Activity (duq://auth/telegram), DuqApp потребляет.
     val telegramLoginEvents = Channel<String>(Channel.UNLIMITED)
+
+    // Native Telegram Login SDK: id_token из handleLoginResponse. Эмитит Activity
+    // (app{client_id}-login.tg.dev/tglogin), DuqApp шлёт на /api/auth/telegram/native.
+    val telegramNativeLoginEvents = Channel<String>(Channel.UNLIMITED)
 }
 
 /** Разобрать raw query "a=1&b=2" в map с URL-декодом значений (Telegram-callback deep link). */
@@ -94,6 +98,7 @@ fun DuqApp(
     audioPlaybackManager: AudioPlaybackManager = koinInject(),
     settings: com.duq.android.data.SettingsRepository = koinInject(),
     nodeClient: com.duq.android.network.duq.DuqNodeClient = koinInject(),
+    rest: com.duq.android.network.duq.DuqRestClient = koinInject(),
 ) {
     val navController = rememberNavController()
 
@@ -120,6 +125,17 @@ fun DuqApp(
                     role = params["role"].orEmpty(),
                     userToken = params["token"].orEmpty(),
                 )
+                nodeClient.reconnect()
+                activeUser = uid
+            }
+        }
+    }
+
+    // Native Telegram Login (SDK вернул id_token через App Link). Шлём ядру → сессия. Тоже
+    // выше гейта, чтобы завершить вход с экрана RegistrationScreen.
+    LaunchedEffect(Unit) {
+        DeepLinkState.telegramNativeLoginEvents.receiveAsFlow().collect { idToken ->
+            runCatching { rest.nativeTelegramLogin(idToken) }.onSuccess { uid ->
                 nodeClient.reconnect()
                 activeUser = uid
             }

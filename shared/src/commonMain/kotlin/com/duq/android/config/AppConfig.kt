@@ -28,6 +28,18 @@ object AppConfig {
     const val TELEGRAM_LOGIN_DEEPLINK_SCHEME = "duq"
     const val TELEGRAM_LOGIN_DEEPLINK_HOST = "auth"
 
+    // Native Telegram Login SDK (бесшовный вход через приложение Telegram, id_token/OIDC).
+    // client_id = bot client id (для init SDK и aud id_token на сервере). Redirect App Link —
+    // ОТДЕЛЬНЫЙ домен app{app_registration_id}-login.tg.dev, который BotFather сгенерил при
+    // регистрации native-приложения (число НЕ равно client_id). Self-hosted: свои значения.
+    const val TELEGRAM_CLIENT_ID = "8278156173"
+    const val TELEGRAM_NATIVE_REDIRECT_HOST = "app2402587810-login.tg.dev"
+    const val TELEGRAM_NATIVE_REDIRECT_URI = "https://$TELEGRAM_NATIVE_REDIRECT_HOST/tglogin"
+
+    // Endpoint ядра для native-входа: приложение шлёт id_token, получает сессию.
+    // На /api/* (не /duq/*) — как telegram/google callback, открыт в nginx без edge-токена.
+    const val TELEGRAM_NATIVE_LOGIN_URL = "$BASE_URL/api/auth/telegram/native"
+
     const val LOG_TIMEZONE = "Asia/Almaty"
 
     // Self-update (GitHub Releases). На фазе CI цель будет переключена на duq-mobile.
